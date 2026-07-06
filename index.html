@@ -54,9 +54,11 @@ h1,h2,h3,h4{font-family:'Poppins','Inter',sans-serif}
 .vidcard iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:11px;display:block;background:#000}
 .viclab{font-size:clamp(11px,1.5vh,14px);color:var(--gris);margin-top:.8vh;text-align:center;font-weight:600}
 .dark .viclab{color:#a79fb3}
-/* vidéo d'accueil */
-.vidframe{margin-top:3.2vh;width:fit-content;padding:4px;background:var(--grad);border-radius:18px;box-shadow:0 18px 50px rgba(154,0,255,.35)}
-.vidframe video{aspect-ratio:4/5;height:46vh;width:auto;display:block;border-radius:14px;object-fit:cover;background:#000}
+/* héro d'accueil : texte à gauche, vidéo à droite */
+.hero{display:grid;grid-template-columns:1.05fr auto;gap:3.5vw;align-items:center;flex:1;min-height:0}
+.vidframe{width:fit-content;justify-self:end;padding:4px;background:var(--grad);border-radius:18px;box-shadow:0 18px 50px rgba(154,0,255,.35)}
+.vidframe video{aspect-ratio:4/5;height:62vh;max-height:70vh;width:auto;display:block;border-radius:14px;object-fit:cover;background:#000}
+@media(max-width:820px){.hero{grid-template-columns:1fr}.vidframe{justify-self:center;margin-top:2vh}.vidframe video{height:40vh}}
 /* schéma boucle */
 .loop{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:stretch;gap:.6vw;margin-top:2.2vh}
 .loop .box{text-align:center;display:flex;flex-direction:column;justify-content:center}
@@ -90,12 +92,16 @@ h1,h2,h3,h4{font-family:'Poppins','Inter',sans-serif}
 <!-- ═══════════ 1. COUVERTURE ═══════════ -->
 <section class="slide dark on">
   <div class="logo big" style="margin-bottom:4vh"><img src="logo-rayoneo.png" alt="Logo Rayoneo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="r">R</div><b>RAYONEO</b><span style="color:#8d8598">· Lumière sur les talents</span></div>
-  <div class="kicker">Proposition de partenariat territorial</div>
-  <h1>Faire d'Oullins-Pierre-Bénite<br><span class="grad-txt">la ville où les talents se révèlent</span></h1>
-  <div class="gradbar"></div>
-  <p class="lead" style="color:#cfc9d8">Un partenariat concret entre la Ville, <b style="color:#fff">Oullins-Pierre-Bénite Emploi</b> et Rayoneo pour connecter les habitants éloignés de l'emploi au tissu d'entreprises locales — sans coût de fonctionnement pour la commune.</p>
-  <div class="vidframe">
-    <video src="salon.mp4" autoplay muted loop playsinline controls aria-label="Vidéo de présentation Rayoneo"></video>
+  <div class="hero">
+    <div>
+      <div class="kicker">Proposition de partenariat territorial</div>
+      <h1>Faire d'Oullins-Pierre-Bénite<br><span class="grad-txt">la ville où les talents se révèlent</span></h1>
+      <div class="gradbar"></div>
+      <p class="lead" style="color:#cfc9d8">Un partenariat concret entre la Ville, <b style="color:#fff">Oullins-Pierre-Bénite Emploi</b> et Rayoneo pour connecter les habitants éloignés de l'emploi au tissu d'entreprises locales — sans coût de fonctionnement pour la commune.</p>
+    </div>
+    <div class="vidframe">
+      <video src="salon.mp4" autoplay muted loop playsinline controls aria-label="Vidéo de présentation Rayoneo"></video>
+    </div>
   </div>
   <div class="slidefoot"><span>Cédric Barbiero — Rayoneo · juillet 2026</span><span>Entreprise du territoire — 15 rue Tupin, Oullins-Pierre-Bénite</span></div>
 </section>
