@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141414">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Rayoneo — Analyse de poste</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* Charte Rayoneo "Magenta Rise" — violet #9A00FF ▶ magenta #FF2770 ▶ orange #FF8A00, noir #141414 */
+:root{
+  --bleu:#141414; --bleu2:#9A00FF; --teal:#FF2770; --orange:#FF8A00;
+  --grad:linear-gradient(45deg,#9A00FF 0%,#FF2770 50%,#FF8A00 100%);
+  --rouge:#c0392b; --vert:#1e8a4c; --gris:#6b7280; --fond:#f6f4f9;
+  --carte:#ffffff; --texte:#141414; --bord:#e2dcea; --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;background:var(--fond);color:var(--texte);font-size:16px;line-height:1.45;padding-bottom:90px}
+h1,h2,h3,h4,.btn,header.app h1{font-family:'Poppins','Inter','Segoe UI',Arial,sans-serif;font-weight:600}
+header.app{position:sticky;top:0;z-index:50;background:var(--bleu);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.25);border-bottom:3px solid;border-image:var(--grad) 1}
+header.app .logo{width:36px;height:36px;border-radius:9px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Poppins',sans-serif;font-size:19px;color:#fff;flex:none}
+header.app h1{font-size:17px;font-weight:700;line-height:1.2}
+header.app small{display:block;font-weight:400;opacity:.85;font-size:12px}
+header.app .hbtn{margin-left:auto;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:9px;padding:8px 12px;font-size:14px;font-weight:600}
+main{max-width:760px;margin:0 auto;padding:14px}
+.card{background:var(--carte);border:1px solid var(--bord);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{font-size:16px;color:var(--bleu2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card h3{font-size:14px;color:var(--bleu2);margin:12px 0 6px}
+label.f{display:block;font-size:13px;font-weight:600;color:#3b4a5a;margin:10px 0 4px}
+input[type=text],input[type=date],input[type=number],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--bord);border-radius:10px;font-size:16px;background:#fff;color:var(--texte)}
+textarea{min-height:70px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:420px){.row2{grid-template-columns:1fr}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{border:1.5px solid var(--bord);border-radius:999px;padding:8px 13px;font-size:14px;background:#fff;color:#39485a;font-weight:500}
+.chip.on{background:var(--bleu2);border-color:var(--bleu2);color:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;padding:13px 18px;font-size:15px;font-weight:700;background:var(--bleu2);color:#fff;width:100%;margin-top:8px}
+.btn.sec{background:#e6edf3;color:var(--bleu)}
+.btn.orange{background:var(--orange)}
+.btn.teal{background:var(--teal)}
+.btn.danger{background:#fdecea;color:var(--rouge)}
+.btn.small{width:auto;padding:9px 14px;font-size:13.5px;margin-top:0}
+.item{border-top:1px solid var(--bord);padding:12px 0}
+.item:first-of-type{border-top:none}
+.item .lbl{font-size:14.5px;font-weight:600;margin-bottom:8px}
+.notes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.nbtn{border:1.5px solid var(--bord);background:#fff;border-radius:9px;padding:9px 2px;font-size:12.5px;font-weight:700;color:#5a6a7a}
+.nbtn.C.on{background:var(--vert);border-color:var(--vert);color:#fff}
+.nbtn.A.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.nbtn.B.on{background:var(--rouge);border-color:var(--rouge);color:#fff}
+.nbtn.N.on{background:var(--gris);border-color:var(--gris);color:#fff}
+.nivs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.nivs .nbtn.on{background:var(--bleu2);border-color:var(--bleu2);color:#fff}
+.nivs .nbtn.n3.on{background:var(--rouge);border-color:var(--rouge)}
+.nivs .nbtn.n2.on{background:var(--orange);border-color:var(--orange)}
+.adapts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.adapts .nbtn.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.item textarea{margin-top:8px;min-height:44px;font-size:14px}
+.photo-row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.photo-row img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--bord)}
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
+.pill.C{background:#e3f5ea;color:var(--vert)}.pill.A{background:#fdeedd;color:#b45a13}.pill.B{background:#fdecea;color:var(--rouge)}.pill.N{background:#eef1f4;color:var(--gris)}
+.pill.ok{background:#e3f5ea;color:var(--vert)}.pill.am{background:#fdeedd;color:#b45a13}.pill.vig{background:#fdecea;color:var(--rouge)}
+nav.sections{display:flex;gap:6px;overflow-x:auto;padding:10px 14px;position:sticky;top:60px;z-index:40;background:var(--fond);-webkit-overflow-scrolling:touch}
+nav.sections button{flex:none;border:1.5px solid var(--bord);background:#fff;border-radius:999px;padding:8px 14px;font-size:13.5px;font-weight:600;color:#44536a}
+nav.sections button.on{background:var(--bleu);border-color:var(--bleu);color:#fff}
+.footer-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--bord);display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:60}
+.footer-bar .btn{margin-top:0}
+.audit-li{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--bord)}
+.audit-li:first-child{border-top:none}
+.audit-li .ic{width:42px;height:42px;flex:none;border-radius:10px;background:#e6edf3;display:flex;align-items:center;justify-content:center;font-size:20px}
+.audit-li .tt{font-weight:700;font-size:15px}
+.audit-li .st{font-size:12.5px;color:var(--gris)}
+.preco{border:1px solid var(--bord);border-left:5px solid var(--orange);border-radius:10px;padding:12px;margin-bottom:10px;background:#fff}
+.preco.B{border-left-color:var(--rouge)}
+.preco.basse{border-left-color:var(--teal)}
+.preco h4{font-size:14.5px;margin-bottom:4px}
+.preco .fin{background:#f8f2ff;border:1px solid #e5d4ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:13px}
+.preco .fin b{color:var(--bleu2)}
+.preco .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.fam{border:1px solid var(--bord);border-radius:10px;padding:12px;margin-bottom:10px}
+.fam h4{font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fam .det{font-size:13px;color:#44536a;margin-top:6px}
+.plan-li{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--bord);align-items:flex-start}
+.plan-li:first-child{border-top:none}
+.plan-li .dt{flex:none;width:86px;font-size:12.5px;font-weight:700;color:var(--bleu2);padding-top:2px}
+.plan-li.done .tt{text-decoration:line-through;color:var(--gris)}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.stat>div{border-radius:10px;padding:10px 6px;text-align:center;font-size:12px;font-weight:600}
+.stat b{display:block;font-size:22px}
+.s-C{background:#e3f5ea;color:var(--vert)}.s-A{background:#fdeedd;color:#b45a13}.s-B{background:#fdecea;color:var(--rouge)}.s-N{background:#eef1f4;color:var(--gris)}
+.hint{font-size:12.5px;color:var(--gris);margin-top:4px}
+.tag{font-size:11.5px;background:#eef1f4;border-radius:6px;padding:2px 7px;color:#5a6a7a;font-weight:600}
+.hidden{display:none!important}
+.avert{background:#fff8ec;border:1px solid #f0dcae;border-radius:10px;padding:10px 12px;font-size:13px;color:#7a5b16;margin-bottom:12px}
+.eli{border:1px solid var(--bord);border-left:5px solid var(--bleu2);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13.5px;background:#fff}
+.eli.ok{border-left-color:var(--vert)}.eli.warn{border-left-color:var(--orange)}
+.eli b{display:block;font-size:14px;margin-bottom:2px}
+table.bud{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+table.bud th,table.bud td{border:1px solid var(--bord);padding:6px 8px;text-align:left}
+table.bud th{background:#f5ecff}
+pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-size:11px;overflow-x:auto;max-height:300px;margin-top:10px}
+/* journal d'observation */
+.jour-entry{border:1px solid var(--bord);border-left:5px solid var(--bleu2);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#fff}
+.jour-date{font-family:'Poppins';font-weight:600;color:var(--bleu2);margin:14px 0 8px;font-size:15px}
+.micbtn{border:1.5px solid var(--bord);background:#fff;border-radius:9px;padding:8px 12px;font-size:14px;font-weight:600;color:var(--bleu2)}
+.micbtn.rec{background:var(--rouge);border-color:var(--rouge);color:#fff;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.55}}
+/* assistant Claude */
+#iabtn{position:fixed;right:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:70;border:none;border-radius:50%;width:56px;height:56px;background:var(--grad);color:#fff;font-size:24px;box-shadow:0 8px 24px rgba(154,0,255,.45);cursor:pointer}
+#iapanel{position:fixed;left:0;right:0;bottom:0;height:80vh;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.3);z-index:80;display:flex;flex-direction:column}
+#iapanel .iahead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--bord)}
+#iamsgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:var(--fond)}
+.iam{max-width:88%;border-radius:14px;padding:10px 12px;font-size:14.5px;line-height:1.45;white-space:pre-wrap}
+.iam.user{align-self:flex-end;background:var(--bleu2);color:#fff}
+.iam.bot{align-self:flex-start;background:#fff;border:1px solid var(--bord)}
+.iam .mtag{display:block;font-size:10.5px;color:var(--gris);margin-top:6px}
+#iainput{display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--bord);background:#fff}
+#iainput textarea{flex:1;min-height:46px;max-height:120px}
+/* ---------- RAPPORT ---------- */
+#rapport{background:#fff;padding:20px;max-width:800px;margin:0 auto}
+#rapport h1{font-size:22px;color:var(--bleu2);margin-bottom:2px}
+#rapport h2{font-size:16px;color:#fff;background:var(--grad);padding:7px 12px;border-radius:6px;margin:22px 0 10px;page-break-after:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#rapport h3{font-size:14px;color:var(--bleu2);margin:14px 0 6px;page-break-after:avoid}
+#rapport table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+#rapport th,#rapport td{border:1px solid #d5cbe2;padding:6px 8px;text-align:left;vertical-align:top}
+#rapport th{background:#f5ecff;color:#141414}
+#rapport .rphoto{width:110px;height:auto;border-radius:6px;margin:2px}
+#rapport .cartouche{border:2px solid var(--bleu2);border-radius:10px;padding:14px;margin:14px 0}
+#rapport .gradband{height:8px;background:var(--grad);border-radius:4px;margin-top:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#rapport .sign{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:24px}
+#rapport .sign>div{border:1px solid #c9d2da;border-radius:8px;height:110px;padding:8px;font-size:12px;color:var(--gris)}
+@media print{
+  body{background:#fff;padding:0}
+  header.app,nav.sections,.footer-bar,.no-print,#iabtn,#iapanel{display:none!important}
+  #app{display:none!important}
+  #rapport{display:block!important;padding:0}
+  .preco,.fam,#rapport table,#rapport .cartouche{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <img src="https://dna-conseil-formations.github.io/Rayoneo/logo-rayoneo.png" alt="" style="height:38px;width:auto" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+  <div class="logo" style="display:none">R</div>
+  <div><h1>Analyse de poste<small>Rayoneo · DNA Conseil et formations</small></h1></div>
+  <button class="hbtn" id="btnHome" onclick="goHome()">Accueil</button>
+</header>
+
+<div id="app"><main id="main"></main></div>
+<div id="rapport" class="hidden"></div>
+<div class="footer-bar hidden" id="fbar"></div>
+
+<button id="iabtn" onclick="iaToggle()" aria-label="Assistant Claude">✨</button>
+<div id="iapanel" class="hidden">
+  <div class="iahead">
+    <b style="font-family:'Poppins'">✨ Assistant Claude</b>
+    <span id="iamodetag" class="tag">auto</span>
+    <span style="flex:1"></span>
+    <button class="btn sec small" onclick="iaSettings()">⚙️</button>
+    <button class="btn sec small" onclick="iaToggle()">✕</button>
+  </div>
+  <div id="iaset" class="hidden" style="padding:12px 14px;border-bottom:1px solid var(--bord);overflow-y:auto">
+    <label class="f">Clé API Anthropic (stockée uniquement sur cet appareil)</label>
+    <input type="password" id="iakey" placeholder="sk-ant-…" autocomplete="off">
+    <label class="f">Choix du modèle</label>
+    <select id="iamode">
+      <option value="auto">Automatique — bascule sur le modèle le plus adapté</option>
+      <option value="haiku">Haiku — rapide et léger</option>
+      <option value="sonnet">Sonnet — équilibré</option>
+      <option value="fable">Fable — analyse avancée</option>
+    </select>
+    <button class="btn small" onclick="iaSaveSet()" style="margin-top:10px">Enregistrer</button>
+    <button class="btn sec small" onclick="CHAT=[];iaRender()" style="margin-top:10px">Effacer la conversation</button>
+    <p class="hint">Clé à créer sur console.anthropic.com (menu API Keys). Les échanges partent directement de cet appareil vers l'API Anthropic ; le contexte de l'audit en cours est joint automatiquement à chaque question.</p>
+  </div>
+  <div id="iamsgs"></div>
+  <div id="iainput">
+    <textarea id="iaq" placeholder="Demande à Claude… (ex : reformule ma dernière observation, propose des adaptations pour ce poste)"></textarea>
+    <button class="btn small" onclick="iaSend()" style="align-self:flex-end">➤</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   RAYONEO — ANALYSE DE POSTE (démarche "zéro barrière")
+   Logique : on caractérise le POSTE, puis les données sont exportées
+   pour le matching avec les profils candidats de la base Rayoneo.
+===================================================================== */
+
+/* ---------- GRILLE D'AUDIT ---------- */
+const GRILLE=[
+{id:"acces",t:"Accès & déplacements",ic:"🚪",items:[
+ "Stationnement : place PMR proche, signalée, aux normes",
+ "Cheminement extérieur : largeur, revêtement, pentes, éclairage",
+ "Entrée du bâtiment : porte, seuil, interphone / visiophone",
+ "Accueil & signalétique : lisible, contrastée, pictogrammes",
+ "Circulations intérieures : largeur, obstacles, encombrement",
+ "Ascenseur / élévateur : dimensions, boutons, annonces sonores et visuelles",
+ "Escaliers : mains courantes, nez de marche contrastés",
+ "Sanitaires adaptés à proximité du poste",
+ "Salle de pause / restauration accessible",
+ "Vestiaires accessibles"]},
+{id:"poste",t:"Poste de travail physique",ic:"🪑",items:[
+ "Plan de travail / bureau : hauteur, réglable, dégagement sous plan",
+ "Siège : ergonomique, réglages, adapté à la morphologie",
+ "Écran(s) : taille, position, bras support, filtre",
+ "Périphériques : clavier, souris, alternatives adaptées",
+ "Outils, machines, équipements de production",
+ "Zones d'atteinte et rangements accessibles sans effort excessif",
+ "Éclairage du poste : intensité, éblouissement, lampe d'appoint",
+ "EPI adaptés ou adaptables"]},
+{id:"envir",t:"Environnement de travail",ic:"🌡️",items:[
+ "Bruit ambiant : niveau, sources, possibilité d'isolement",
+ "Éclairage général : uniformité, lumière naturelle, reflets",
+ "Température, ventilation, courants d'air",
+ "Vibrations, odeurs, qualité de l'air",
+ "Espace calme / de repli disponible",
+ "Densité d'occupation : open space, promiscuité"]},
+{id:"orga",t:"Organisation du travail",ic:"🗓️",items:[
+ "Horaires : aménagement possible, souplesse, horaires décalés",
+ "Temps partiel / temps de travail modulable",
+ "Pauses : fréquence et durée adaptables",
+ "Télétravail possible et équipé",
+ "Charge de travail et objectifs ajustables",
+ "Rythme / cadence : marges de manœuvre, interruptions",
+ "Planification prévisible des tâches (anticipation)",
+ "Déplacements professionnels : fréquence, moyens"]},
+{id:"comm",t:"Information & communication",ic:"💬",items:[
+ "Consignes de travail accessibles (écrites, orales, imagées)",
+ "Documents internes adaptés (FALC, gros caractères, numérique)",
+ "Réunions : supports partagés, prise de parole facilitée",
+ "Téléphone / visioconférence : alternatives possibles",
+ "Alarmes et alertes : doublées visuel + sonore",
+ "Boucle magnétique / interprétariat LSF mobilisable"]},
+{id:"num",t:"Numérique & logiciels",ic:"💻",items:[
+ "Logiciels métiers compatibles lecteurs d'écran",
+ "Réglages d'affichage : contraste, agrandissement, polices",
+ "Dictée vocale / commande vocale possible",
+ "Double écran ou écran adapté disponible",
+ "Intranet et outils collaboratifs accessibles (RGAA)",
+ "Formation aux outils numériques adaptés possible"]},
+{id:"secu",t:"Sécurité & évacuation",ic:"🚨",items:[
+ "Procédure d'évacuation intégrant les PSH (consignes personnalisables)",
+ "Espace d'attente sécurisé identifié",
+ "Alarme incendie perceptible par tous (flash + sirène)",
+ "Guides / serre-files sensibilisés aux besoins spécifiques",
+ "Protocole d'urgence médicale en place (référents, trousse)",
+ "DUERP à jour, prêt à intégrer une situation de handicap"]},
+{id:"coll",t:"Collectif de travail & management",ic:"🤝",items:[
+ "Collectif déjà sensibilisé au handicap (ou sensibilisation possible)",
+ "Manager formé / accompagné à l'inclusion",
+ "Possibilité de désigner un tuteur / référent d'intégration",
+ "Culture d'équipe : entraide, ouverture, stabilité",
+ "Entretiens de suivi réguliers pratiqués",
+ "Référent handicap identifié dans la structure"]}
+];
+
+/* ---------- PROFIL D'EXIGENCES DU POSTE (données de matching) ---------- */
+const DIMS=[
+ ["mobilite","Se déplacer fréquemment dans les locaux / sur site"],
+ ["charges","Porter des charges, fournir des efforts physiques"],
+ ["debout","Tenir une station debout prolongée"],
+ ["assise","Tenir une posture assise prolongée"],
+ ["dexterite","Réaliser des gestes fins ou répétitifs (membres supérieurs)"],
+ ["vision","Mobiliser la vue (détails, contrôle, lecture d'écrans ou de pièces)"],
+ ["ecran","Travailler sur écran de façon soutenue"],
+ ["audition","Entendre : consignes orales, signaux sonores, téléphone"],
+ ["oral","S'exprimer oralement : accueil, téléphone, réunions"],
+ ["lecture","Lire et écrire : documents, consignes, saisie"],
+ ["concentration","Maintenir une attention soutenue, gérer les interruptions"],
+ ["memoire","Mémoriser des procédures, apprendre rapidement"],
+ ["stress","Gérer le stress, les urgences, les imprévus"],
+ ["social","Interagir : travail d'équipe, contact public"],
+ ["autonomie","Travailler en autonomie, s'auto-organiser"],
+ ["rythme","Suivre un rythme soutenu, des cadences ou horaires atypiques"],
+ ["conduite","Conduire des véhicules ou des engins"]
+];
+const NIVX=["Non requis","Faible","Moyen","Élevé"];
+const ADAPTX={oui:"Adaptable",partiel:"Partiellement",non:"Non adaptable"};
+
+/* ---------- COMPATIBILITÉ PAR FAMILLE DE HANDICAP ---------- */
+const FAMS={
+ moteur:{t:"Handicap moteur",dims:["mobilite","charges","debout","dexterite"],dom:"acces",
+  am:"EPAAST puis aménagements : mobilier et accès adaptés, aides techniques de manutention, transport ou véhicule adapté.",f:["ag_epaast","ag_ast","ag_dep","fi_amen","pch"]},
+ visuel:{t:"Handicap visuel",dims:["vision","ecran","lecture","conduite"],dom:"num",
+  am:"Lecteur d'écran / agrandisseur, éclairage renforcé, documents adaptés, repérage des cheminements, PAS handicap visuel.",f:["ag_tech","ag_pas","fi_amen"]},
+ auditif:{t:"Handicap auditif",dims:["audition","oral"],dom:"comm",
+  am:"Prothèses auditives, boucle magnétique, alarmes visuelles, sous-titrage des visios, interprétariat LSF, PAS handicap auditif.",f:["ag_aud","ag_pas","ag_tech","fi_cat"]},
+ psychique:{t:"Handicap psychique",dims:["stress","social","rythme","autonomie"],dom:"coll",
+  am:"PAS handicap psychique, tutorat, environnement prévisible, points de régulation réguliers, sensibilisation ciblée du collectif.",f:["ag_pas","ag_acc","ag_hum","fi_cat"]},
+ cognitif:{t:"Troubles cognitifs / DYS",dims:["memoire","lecture","concentration"],dom:"comm",
+  am:"Consignes séquencées multi-supports, logiciels d'aide (correcteur, synthèse vocale), temps d'apprentissage majoré, PAS troubles cognitifs.",f:["ag_pas","ag_tech","opco","fi_cat"]},
+ tsa:{t:"Troubles du spectre de l'autisme",dims:["social","stress","concentration"],dom:"envir",
+  am:"PAS TSA, environnement sensoriel maîtrisé, planification stable, communication explicite, job coaching.",f:["ag_pas","ag_hum","ag_acc","fi_cat"]},
+ invalidante:{t:"Maladie invalidante / chronique",dims:["charges","rythme","debout"],dom:"orga",
+  am:"Souplesse horaire, télétravail, gestion de la fatigabilité, absences pour soins facilitées, suivi médical renforcé.",f:["spst","ag_ast","fi_cat"]}
+};
+
+/* ---------- FINANCEMENTS (barèmes vérifiés janvier 2026) ---------- */
+const FIN={
+ ag_ast:{n:"Agefiph — Aide à l'adaptation des situations de travail",m:"Jusqu'à 90 % du surcoût lié à la compensation du handicap (sur devis)",s:"prive",u:"https://www.agefiph.fr/aides-financieres/aide-ladaptation-des-situations-de-travail",d:"Aménagement du poste, télétravail, tutorat, auxiliariat, interprétariat, équipements spécifiques."},
+ ag_acc:{n:"Agefiph — Aide à l'accueil, à l'intégration et à l'évolution professionnelle",m:"Jusqu'à 3 000 €",s:"prive",u:"https://www.agefiph.fr/aides-financieres/aide-laccueil-lintegration-et-levolution-professionnelle-des-personnes-en-situation",d:"Sensibilisation du collectif, accompagnement du manager, accompagnement individualisé. À demander dans les 6 mois suivant l'embauche."},
+ ag_hum:{n:"Agefiph — Aide humaine en compensation du handicap",m:"Jusqu'à 4 200 €",s:"prive",u:"https://www.agefiph.fr/aides-financieres",d:"Aide humaine liée à l'adaptation de la situation de travail (tutorat, assistance)."},
+ ag_tech:{n:"Agefiph — Aide technique en compensation du handicap",m:"Selon devis, en complément des financements de droit commun",s:"prive",u:"https://www.agefiph.fr/aides-financieres",d:"Matériel et équipements compensant le handicap (hors obligations normales de l'employeur)."},
+ ag_dep:{n:"Agefiph — Aide aux déplacements",m:"Jusqu'à 12 000 €",s:"prive",u:"https://www.agefiph.fr/aides-financieres/aide-aux-deplacements-en-compensation-du-handicap",d:"Aménagement de véhicule, taxi, transport adapté domicile-travail."},
+ ag_aud:{n:"Agefiph — Aide prothèses auditives",m:"850 € (1 prothèse) / 1 700 € (2 prothèses), renouvelable sous 4 ans",s:"prive",u:"https://www.agefiph.fr/aides-financieres/aide-protheses-auditives",d:"Cumulable avec les aides de droit commun (Sécurité sociale, mutuelle)."},
+ ag_epaast:{n:"EPAAST — Étude préalable à l'aménagement du poste",m:"Prise en charge intégrale (gratuite pour l'employeur)",s:"prive",u:"https://www.agefiph.fr",d:"Étude ergonomique approfondie ; prescrite par Cap emploi, France Travail ou le médecin du travail."},
+ ag_pas:{n:"Prestations d'appuis spécifiques (PAS)",m:"Gratuites, sur prescription",s:"tous",u:"https://www.agefiph.fr",d:"Expertise par type de handicap (auditif, visuel, moteur, psychique, cognitif, TSA…) : compensations et modes opératoires."},
+ fi_amen:{n:"FIPHFP — Aménagement du poste de travail",m:"Jusqu'à 10 000 €, cumulable avec les autres aides du FIPHFP",s:"public",u:"https://www.fiphfp.fr/employeurs/nos-aides-financieres/catalogue-des-interventions/aide-a-l-adaptation-du-poste-de-travail-d-une-personne-en-situation-de-handicap",d:"Études, équipements, mobilier ergonomique, logiciels adaptés."},
+ fi_cat:{n:"FIPHFP — Catalogue des interventions 2026",m:"Barèmes par fiche (transport, aides humaines, formation, accessibilité numérique…)",s:"public",u:"https://www.fiphfp.fr/employeurs/nos-aides-financieres/catalogue-des-interventions",d:"Demandes via la plateforme du FIPHFP ; couvre aussi le maintien dans l'emploi et la formation."},
+ pch:{n:"PCH — Prestation de compensation du handicap (MDPH)",m:"Selon barème départemental",s:"tous",u:"https://www.monparcourshandicap.gouv.fr",d:"Aides individuelles versées à la personne, pouvant compléter le volet professionnel."},
+ cap:{n:"Cap emploi / France Travail",m:"Accompagnement gratuit",s:"tous",u:"https://www.capemploi.info",d:"Appui au recrutement, prescription des prestations (EPAAST, PAS), sécurisation du parcours."},
+ spst:{n:"Médecine du travail (SPST)",m:"Inclus dans la cotisation employeur",s:"tous",u:"",d:"Visite d'information et de prévention, préconisations d'aménagement, suivi renforcé possible."},
+ opco:{n:"OPCO / plan de développement des compétences",m:"Selon accords de branche",s:"prive",u:"",d:"Financement des formations d'adaptation au poste, y compris outils de compensation."}
+};
+
+/* ---------- PRÉCONISATIONS PAR DOMAINE ---------- */
+const PRECO_MAP={
+ acces:{a:"Mettre en conformité et fluidifier l'accès : place PMR, cheminements, portes, sanitaires, signalétique contrastée.",f:["ag_ast","fi_amen","ag_epaast","cap"]},
+ poste:{a:"Adapter le poste : mobilier réglable, siège ergonomique, aides techniques, réorganisation des zones d'atteinte. Une EPAAST est recommandée avant investissement.",f:["ag_epaast","ag_ast","ag_tech","fi_amen","spst"]},
+ envir:{a:"Traiter l'environnement : traitement acoustique ou casque atténuateur, éclairage ajusté, espace calme, repositionnement du poste.",f:["ag_ast","fi_amen","spst"]},
+ orga:{a:"Aménager l'organisation : horaires adaptés, pauses supplémentaires, télétravail partiel, lissage de la charge, planification anticipée.",f:["spst","ag_ast","fi_cat","cap"]},
+ comm:{a:"Rendre l'information accessible : consignes multi-formats (écrit, oral, imagé, FALC), alarmes doublées, boucle magnétique, interprétariat LSF si besoin.",f:["ag_ast","ag_hum","ag_pas","fi_cat"]},
+ num:{a:"Adapter le numérique : logiciels d'agrandissement ou lecteur d'écran, dictée vocale, double écran, mise en accessibilité des outils internes (RGAA), formation associée.",f:["ag_tech","fi_amen","ag_pas","opco"]},
+ secu:{a:"Sécuriser l'évacuation et les urgences : consigne personnalisable, espace d'attente sécurisé, alarme flash + sonore, information des serre-files, mise à jour du DUERP.",f:["ag_ast","fi_amen","spst"]},
+ coll:{a:"Préparer le collectif : sensibilisation de l'équipe, accompagnement du manager, désignation d'un tuteur, entretiens de suivi planifiés.",f:["ag_acc","fi_cat","cap","ag_pas"]}
+};
+
+const NOTES={C:"Conforme",A:"À adapter",B:"Bloquant",N:"Non concerné"};
+
+/* Jalons du plan d'action (jours relatifs à la date d'embauche cible) */
+const JALONS=[
+ [-60,"Envoi des données du poste à la base Rayoneo pour matching des candidats","Rayoneo"],
+ [-55,"Présélection des profils compatibles et présentation à l'employeur","Rayoneo"],
+ [-50,"Entretiens / immersion (PMSMP) avec les candidats présélectionnés","Employeur + Rayoneo"],
+ [-45,"Choix du candidat retenu + recueil de ses besoins précis de compensation","Employeur"],
+ [-43,"Recueil de l'accord du candidat sur les informations partagées avec l'équipe","Employeur + candidat"],
+ [-42,"Actualisation de l'analyse de poste avec les besoins du candidat retenu","Rayoneo"],
+ [-40,"Prescription EPAAST / PAS si nécessaire (Cap emploi, France Travail, médecin du travail)","Cap emploi / SPST"],
+ [-35,"Demandes de devis pour les aménagements retenus","Employeur"],
+ [-30,"Dépôt des demandes de financement (Agefiph ou FIPHFP)","Employeur + Rayoneo"],
+ [-21,"Commande du matériel / lancement des travaux","Employeur"],
+ [-15,"Sensibilisation du collectif de travail + accompagnement du manager","Rayoneo"],
+ [-10,"Désignation et préparation du tuteur / référent d'intégration","Employeur"],
+ [-7,"Vérification de l'installation complète du poste","Employeur + Rayoneo"],
+ [-3,"Programmation de la visite d'information et de prévention (SPST)","Employeur"],
+ [0,"Jour J : accueil et parcours d'intégration adapté","Manager + tuteur"],
+ [7,"Point d'étape fin de semaine 1 (ajustements rapides)","Manager"],
+ [30,"Entretien de suivi 1 mois : efficacité des aménagements","Manager + référent handicap"],
+ [60,"Point mi-période d'essai avec le salarié et le tuteur","Employeur"],
+ [120,"Bilan des aménagements, ajustements complémentaires","Rayoneo"],
+ [180,"Bilan 6 mois + vérification du solde des aides (délai Agefiph accueil/intégration : 6 mois)","Employeur + Rayoneo"]
+];
+
+/* ---------- COÛTS INDICATIFS PAR DOMAINE (fourchettes, à affiner sur devis) ---------- */
+const COUTS={acces:[1500,12000],poste:[800,6000],envir:[500,5000],orga:[0,1500],comm:[1500,6000],num:[300,4000],secu:[1800,5500],coll:[1500,4000]};
+
+/* ---------- ANNUAIRE OFFICIEL — recherche-entreprises.api.gouv.fr (INSEE/RNE) ---------- */
+const TRANCHES={NN:["Non renseigné",0],"00":["0 salarié",0],"01":["1 ou 2",1],"02":["3 à 5",3],"03":["6 à 9",6],"11":["10 à 19",10],"12":["20 à 49",20],"21":["50 à 99",50],"22":["100 à 199",100],"31":["200 à 249",200],"32":["250 à 499",250],"41":["500 à 999",500],"42":["1 000 à 1 999",1000],"51":["2 000 à 4 999",2000],"52":["5 000 à 9 999",5000],"53":["10 000 et +",10000]};
+let API_RES=[];
+async function rechercherEntreprise(){
+  const q=$("apiQ").value.trim();if(!q)return;
+  const box=$("apiRes");box.innerHTML="<p class='hint'>Recherche en cours…</p>";
+  try{
+    const r=await fetch("https://recherche-entreprises.api.gouv.fr/search?per_page=5&q="+encodeURIComponent(q));
+    const d=await r.json();API_RES=d.results||[];
+    box.innerHTML=API_RES.length?API_RES.map((e,i)=>{
+      const t=TRANCHES[e.tranche_effectif_salarie]||TRANCHES.NN;
+      return `<div class="audit-li" onclick="choisirEntreprise(${i})"><div class="ic">🏢</div><div style="flex:1"><div class="tt">${esc(e.nom_complet)}</div><div class="st">SIREN ${e.siren} · NAF ${e.activite_principale||"?"} · Effectif : ${t[0]} · ${esc((e.siege||{}).libelle_commune||"")}</div></div><div style="color:var(--gris)">＋</div></div>`;
+    }).join(""):"<p class='hint'>Aucun résultat pour cette recherche.</p>";
+  }catch(err){box.innerHTML="<p class='hint'>⚠️ Impossible de joindre l'annuaire officiel (connexion internet requise). Saisissez les informations manuellement.</p>"}
+}
+function choisirEntreprise(i){
+  const e=API_RES[i];if(!e)return;const s=e.siege||{};const c=e.complements||{};
+  cur.infos.entreprise=e.nom_complet||"";
+  cur.infos.siren=e.siren||"";
+  cur.infos.naf=e.activite_principale||"";
+  cur.infos.catju=String(e.nature_juridique||"");
+  cur.infos.tranche=e.tranche_effectif_salarie||"NN";
+  const t=TRANCHES[cur.infos.tranche];if(t&&t[1])cur.infos.effectif=String(t[1]);
+  cur.infos.adresse=[s.numero_voie,s.type_voie,s.libelle_voie,s.code_postal,s.libelle_commune].filter(Boolean).join(" ")||s.adresse||"";
+  cur.infos.secteur=(c.est_administration||c.est_service_public||cur.infos.catju.startsWith("7"))?"public":(c.est_association||cur.infos.catju.startsWith("92"))?"asso":"prive";
+  if(c.est_siae)cur.infos.ea="siae";
+  persist();render();
+}
+function effectifNum(){const e=parseInt(cur.infos.effectif,10);if(!isNaN(e))return e;const t=TRANCHES[cur.infos.tranche];return t?t[1]:0}
+
+/* ---------- MOTEUR D'ÉLIGIBILITÉ (statut, taille, objet) ---------- */
+function eligibilite(){
+  const out=[];const inf=cur.infos;const eff=effectifNum();const pub=inf.secteur==="public";
+  if(eff>=20)out.push({cls:"warn",t:"Structure assujettie à l'OETH ("+eff+" salariés ≥ 20)",d:pub?
+   "Obligation d'emploi de 6 % de bénéficiaires. Déclaration annuelle auprès du FIPHFP ; contribution due si le taux n'est pas atteint. Ce recrutement réduit directement la contribution.":
+   "Obligation d'emploi de 6 % de travailleurs handicapés (DOETH via la DSN). Contribution de 400 à 600 fois le Smic horaire par bénéficiaire manquant selon la taille : ce recrutement la réduit directement."});
+  else out.push({cls:"ok",t:"Structure non assujettie à l'OETH (moins de 20 salariés)",d:"Aucune obligation ni contribution, mais l'intégralité des aides "+(pub?"du FIPHFP":"de l'Agefiph")+" reste mobilisable."});
+  out.push({cls:"ok",t:"Régime d'aides : "+(pub?"FIPHFP (fonction publique)":"Agefiph"+(inf.secteur==="asso"?" — les associations relèvent du régime privé":"")),d:pub?"Demandes via la plateforme du FIPHFP (catalogue des interventions 2026).":"Demandes en ligne sur agefiph.fr ; la plupart des aides sont à déposer dans les 6 mois suivant l'embauche."});
+  out.push({cls:"info",t:"Condition côté candidat : RQTH / titre BOETH",d:"Requis pour la quasi-totalité des aides. Si la reconnaissance est en cours, compter 4 à 6 mois (MDPH) : à anticiper dans le plan d'action."});
+  if(inf.ea&&inf.ea!=="non")out.push({cls:"warn",t:"Statut particulier : "+({ea:"Entreprise adaptée (EA)",esat:"ESAT",siae:"SIAE / structure d'insertion"}[inf.ea]||inf.ea),d:"Régime spécifique (aides au poste, CDD tremplin…). Certaines aides Agefiph ne sont pas cumulables avec les aides au poste : vérifier fiche par fiche avant dépôt."});
+  if(inf.contrat==="Alternance")out.push({cls:"ok",t:"Contrat en alternance",d:"Aides Agefiph dédiées à l'alternance, cumulables avec le droit commun ; dépôt au plus tard 6 mois après l'embauche."});
+  if((inf.naf||"").startsWith("78.20"))out.push({cls:"info",t:"Activité de travail temporaire (NAF 78.20)",d:"Régime OETH spécifique : les BOETH mis à disposition comptent au prorata chez l'entreprise utilisatrice."});
+  if(!pub&&eff>=250)out.push({cls:"info",t:"250 salariés et plus : référent handicap obligatoire",d:"Article L5213-6-1 du Code du travail. Vérifier sa désignation effective et sa formation."});
+  return out;
+}
+const eliHTML=()=>eligibilite().map(e=>`<div class="eli ${e.cls}"><b>${esc(e.t)}</b>${esc(e.d)}</div>`).join("");
+function budgetTotaux(){let mn=0,mx=0;cur.precos.forEach(p=>{mn+=+p.cmin||0;mx+=+p.cmax||0});return[mn,mx]}
+const fmtE=n=>(+n||0).toLocaleString("fr-FR")+" €";
+
+/* ================= ÉTAT & STOCKAGE ================= */
+let AUDITS=[]; let cur=null; let curSection="infos";
+function migrate(a){
+  if(!a.exig)a.exig={dims:{},note:""};
+  if(!a.exig.dims)a.exig.dims={};
+  if(a.infos&&a.infos.siren===undefined)Object.assign(a.infos,{siren:"",naf:"",catju:"",tranche:"",ea:"non"});
+  if(!a.journal)a.journal=[];
+  (a.precos||[]).forEach(p=>{if(p.cmin===undefined){p.cmin=0;p.cmax=0}});
+  delete a.cand;
+  return a;
+}
+function loadAll(){try{AUDITS=(JSON.parse(localStorage.getItem("rayoneo_audits")||"[]")).map(migrate)}catch(e){AUDITS=[]}}
+function saveAll(){
+  try{localStorage.setItem("rayoneo_audits",JSON.stringify(AUDITS))}
+  catch(e){alert("Mémoire pleine : supprimez des photos ou exportez puis supprimez d'anciens audits.")}
+}
+function persist(){if(cur){cur.maj=Date.now();saveAll()}}
+function nouvelAudit(){
+  const a={id:"a"+Date.now(),cree:Date.now(),maj:Date.now(),
+   infos:{entreprise:"",secteur:"prive",effectif:"",adresse:"",contact:"",refHandicap:"",auditeur:"",dateAudit:new Date().toISOString().slice(0,10),poste:"",service:"",contrat:"CDI",dateEmbauche:"",siren:"",naf:"",catju:"",tranche:"",ea:"non"},
+   taches:{description:"",principales:"",exigences:""},
+   exig:{dims:{},note:""},
+   journal:[],
+   grille:{},precos:[],plan:[],synthese:""};
+  AUDITS.unshift(a);saveAll();return a;
+}
+function delAudit(id){if(!confirm("Supprimer définitivement cet audit ?"))return;AUDITS=AUDITS.filter(x=>x.id!==id);saveAll();goHome()}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function fmtD(iso){if(!iso)return"—";const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"})}
+
+/* ================= NAVIGATION ================= */
+const $=id=>document.getElementById(id);
+function goHome(){cur=null;render()}
+function openAudit(id,section){cur=AUDITS.find(a=>a.id===id);curSection=section||"infos";render()}
+function setSection(s){curSection=s;render();window.scrollTo(0,0)}
+
+const ORDER=["infos","taches","journal","exig","grille","precos","match","plan","rapport"];
+const LABELS={infos:"1. Contexte",taches:"2. Poste",journal:"3. Journal",exig:"4. Exigences",grille:"5. Audit",precos:"6. Préconisations",match:"7. Matching",plan:"8. Plan d'action",rapport:"9. Rapport"};
+
+function render(){
+  $("rapport").classList.add("hidden");$("app").classList.remove("hidden");
+  const fb=$("fbar");
+  if(!cur){renderHome();fb.classList.add("hidden");$("btnHome").style.visibility="hidden";return}
+  $("btnHome").style.visibility="visible";
+  renderNav();
+  const m=$("main");
+  ({infos:renderInfos,taches:renderTaches,journal:renderJournal,exig:renderExig,grille:renderGrille,precos:renderPrecos,match:renderMatch,plan:renderPlan,rapport:renderRapportMenu}[curSection]||renderInfos)(m);
+  fb.classList.remove("hidden");
+  fb.innerHTML=`<button class="btn sec" onclick="navStep(-1)">◀ Précédent</button><button class="btn" onclick="navStep(1)">Suivant ▶</button>`;
+}
+function navStep(d){const i=ORDER.indexOf(curSection)+d;if(i>=0&&i<ORDER.length)setSection(ORDER[i])}
+function renderNav(){
+  let nav=document.querySelector("nav.sections");
+  if(!nav){nav=document.createElement("nav");nav.className="sections";document.querySelector("header.app").after(nav)}
+  nav.innerHTML=ORDER.map(s=>`<button class="${s===curSection?"on":""}" onclick="setSection('${s}')">${LABELS[s]}</button>`).join("");
+  nav.classList.remove("hidden");
+}
+function hideNav(){const n=document.querySelector("nav.sections");if(n)n.classList.add("hidden")}
+
+/* ---------- ACCUEIL ---------- */
+function renderHome(){
+  hideNav();
+  const m=$("main");
+  m.innerHTML=`
+  <div class="card">
+    <h2>📋 Mes analyses de poste</h2>
+    ${AUDITS.length?AUDITS.map(a=>{
+      const n=Object.values(a.grille).filter(g=>g.n).length;
+      return `<div class="audit-li" onclick="openAudit('${a.id}')">
+        <div class="ic">🏢</div>
+        <div style="flex:1">
+          <div class="tt">${esc(a.infos.poste||"Poste non renseigné")} — ${esc(a.infos.entreprise||"Entreprise ?")}</div>
+          <div class="st">${fmtD(a.infos.dateAudit)} · ${n} points évalués · ${a.precos.length} préconisations</div>
+        </div><div style="color:var(--gris)">›</div></div>`}).join("")
+     :`<p class="hint">Aucun audit pour le moment. Créez votre première analyse de poste.</p>`}
+    <button class="btn orange" onclick="openAudit(nouvelAudit().id)">➕ Nouvelle analyse de poste</button>
+    <button class="btn sec" onclick="chargerDemo()">🧪 Charger une mise en situation (démo)</button>
+  </div>
+  <div class="card">
+    <h2>🔄 La démarche Rayoneo</h2>
+    <p style="font-size:13.5px">1. On analyse le <b>poste</b> et son environnement (sans candidat prédéfini).<br>
+    2. L'app produit le <b>profil d'exigences</b> du poste et sa <b>compatibilité</b> par famille de handicap.<br>
+    3. Les <b>données de matching</b> sont exportées vers la base Rayoneo pour identifier les candidats compatibles.<br>
+    4. Une fois le candidat retenu, le <b>plan d'action</b> déroule l'agenda jusqu'à l'embauche et au-delà.</p>
+  </div>
+  <div class="card">
+    <h2>💾 Données</h2>
+    <button class="btn sec" onclick="exportJSON()">Exporter tous les audits (fichier JSON)</button>
+    <button class="btn sec" onclick="$('impF').click()">Importer un fichier JSON</button>
+    <input type="file" id="impF" accept=".json" class="hidden" onchange="importJSON(this)">
+    <p class="hint">Les données restent sur cet appareil. Exportez régulièrement pour sauvegarder.</p>
+  </div>
+  <div class="card">
+    <h2>ℹ️ Installer l'application</h2>
+    <p style="font-size:13.5px">Dans Chrome sur Android : menu ⋮ → <b>« Ajouter à l'écran d'accueil »</b>. L'application fonctionne ensuite hors ligne.</p>
+  </div>`;
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(AUDITS,null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="rayoneo-audits-"+new Date().toISOString().slice(0,10)+".json";a.click();
+}
+function importJSON(inp){
+  const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;
+    d.forEach(a=>{if(!AUDITS.find(x=>x.id===a.id))AUDITS.push(migrate(a))});saveAll();render();alert("Import réussi.")}
+    catch(e){alert("Fichier invalide.")}};
+  r.readAsText(f);
+}
+
+/* ---------- helpers champs ---------- */
+function F(path,label,type="text",attrs=""){
+  const v=getP(path);
+  return `<label class="f">${label}</label><input type="${type}" value="${esc(v)}" ${attrs} oninput="setP('${path}',this.value)">`;
+}
+function TA(path,label,ph=""){
+  return `<label class="f">${label}</label><textarea placeholder="${esc(ph)}" oninput="setP('${path}',this.value)">${esc(getP(path))}</textarea>`;
+}
+function SEL(path,label,opts){
+  const v=getP(path);
+  return `<label class="f">${label}</label><select onchange="setP('${path}',this.value)">${opts.map(o=>`<option value="${o[0]}" ${o[0]===v?"selected":""}>${o[1]}</option>`).join("")}</select>`;
+}
+function getP(p){return p.split(".").reduce((o,k)=>o?.[k],cur)??""}
+function setP(p,v){const ks=p.split(".");let o=cur;for(let i=0;i<ks.length-1;i++)o=o[ks[i]];o[ks.at(-1)]=v;persist()}
+
+/* ---------- 1. CONTEXTE ---------- */
+function renderInfos(m){
+  m.innerHTML=`
+  <div class="card"><h2>🏛️ Import depuis l'annuaire officiel de l'État</h2>
+    <label class="f">SIREN, SIRET ou nom de l'entreprise</label>
+    <input type="text" id="apiQ" placeholder="Ex : 932959729 ou Atelier Lumen">
+    <button class="btn" onclick="rechercherEntreprise()">🔍 Rechercher</button>
+    <div id="apiRes"></div>
+    <p class="hint">Source : recherche-entreprises.api.gouv.fr (INSEE / RNE). Remplit automatiquement raison sociale, SIREN, NAF, adresse, effectif et type d'employeur. Connexion internet requise.</p>
+  </div>
+  <div class="card"><h2>🏢 Employeur</h2>
+    ${F("infos.entreprise","Nom de la structure")}
+    ${SEL("infos.secteur","Type d'employeur",[["prive","Secteur privé (Agefiph)"],["public","Fonction publique (FIPHFP)"],["asso","Association (régime Agefiph)"]])}
+    <div class="row2">${F("infos.effectif","Effectif","number")}${F("infos.contact","Contact (nom, fonction)")}</div>
+    ${F("infos.adresse","Adresse du site")}
+    ${F("infos.refHandicap","Référent handicap (si existant)")}
+    <div class="row2">${F("infos.siren","SIREN")}${F("infos.naf","Code NAF / APE")}</div>
+    ${SEL("infos.ea","Statut particulier de la structure",[["non","Aucun (droit commun)"],["ea","Entreprise adaptée (EA)"],["esat","ESAT"],["siae","SIAE / structure d'insertion"]])}
+  </div>
+  <div class="card"><h2>🎯 Mission d'audit</h2>
+    <div class="row2">${F("infos.auditeur","Auditeur / consultant")}${F("infos.dateAudit","Date de l'audit","date")}</div>
+    ${F("infos.poste","Intitulé du poste analysé")}
+    <div class="row2">${F("infos.service","Service / équipe")}${SEL("infos.contrat","Type de contrat",[["CDI","CDI"],["CDD","CDD"],["Alternance","Alternance"],["Intérim","Intérim"],["Stage","Stage / PMSMP"],["Titulaire","Titulaire (public)"],["Contractuel","Contractuel (public)"]])}</div>
+    ${F("infos.dateEmbauche","Date d'embauche cible","date")}
+    <p class="hint">La date d'embauche cible sert à générer l'agenda du plan d'action (matching inclus, dès J−60).</p>
+  </div>
+  <div class="card"><h2>🧭 Éligibilité & obligations de la structure</h2>
+    ${eliHTML()}
+    <p class="hint">Calcul automatique selon l'effectif, le type d'employeur, le statut particulier et le contrat. Ce diagnostic est repris dans le rapport.</p>
+  </div>
+  <div class="card"><button class="btn danger" onclick="delAudit(cur.id)">🗑️ Supprimer cet audit</button></div>`;
+}
+
+/* ---------- 2. POSTE & TÂCHES ---------- */
+function renderTaches(m){
+  m.innerHTML=`
+  <div class="card"><h2>🛠️ Description du poste</h2>
+    ${TA("taches.description","Mission générale du poste","Finalité du poste, place dans l'organisation…")}
+    ${TA("taches.principales","Tâches principales (une par ligne)","Ex :\n- Accueil téléphonique\n- Saisie de commandes\n- Préparation des expéditions")}
+    ${TA("taches.exigences","Contraintes particulières observées","Cadences, horaires atypiques, polyvalence, coactivité, machines…")}
+  </div>
+  <div class="card">
+    <h2>📌 Rappel méthode</h2>
+    <p style="font-size:13.5px">Observer le travail <b>réel</b> (pas seulement le prescrit) : passer du temps au poste, interroger le titulaire actuel et le manager, repérer les variabilités (pics d'activité, aléas). Les étapes 3 et 4 se remplissent idéalement sur site.</p>
+  </div>`;
+}
+
+/* ---------- 3. JOURNAL D'OBSERVATION TERRAIN ---------- */
+const ETAPES_FROMAGE=["Réception et contrôle du lait","Pasteurisation / thermisation","Emprésurage et caillage","Décaillage et brassage","Moulage","Pressage / égouttage","Démoulage et salage / saumure","Affinage (cave)","Conditionnement / emballage","Préparation des expéditions"];
+function addObs(etape){
+  cur.journal.push({id:"o"+Date.now()+Math.random().toString(36).slice(2,6),
+   date:new Date().toISOString().slice(0,10),heure:new Date().toTimeString().slice(0,5),
+   etape:etape||"",notes:"",p:[]});
+  persist();render();
+}
+function prechargerEtapes(liste){
+  const d=cur.infos.dateAudit||new Date().toISOString().slice(0,10);
+  liste.forEach(e=>cur.journal.push({id:"o"+Date.now()+Math.random().toString(36).slice(2,6),date:d,heure:"",etape:e,notes:"",p:[]}));
+  persist();render();
+}
+function updObs(id,k,v){const o=cur.journal.find(x=>x.id===id);if(o){o[k]=v;persist();if(k==="date")render()}}
+function delObs(id){if(!confirm("Supprimer cette observation ?"))return;cur.journal=cur.journal.filter(x=>x.id!==id);persist();render()}
+function obsPhoto(id,inp){
+  const f=inp.files[0];if(!f)return;
+  const img=new Image();const rd=new FileReader();
+  rd.onload=()=>{img.onload=()=>{
+    const cv=document.createElement("canvas");const MAX=900;
+    const r=Math.min(1,MAX/Math.max(img.width,img.height));
+    cv.width=img.width*r;cv.height=img.height*r;
+    cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+    const o=cur.journal.find(x=>x.id===id);if(o){(o.p=o.p||[]).push(cv.toDataURL("image/jpeg",.55));persist();render()}
+  };img.src=rd.result};
+  rd.readAsDataURL(f);
+}
+function delObsPhoto(id,ix){const o=cur.journal.find(x=>x.id===id);o.p.splice(ix,1);persist();render()}
+let REC=null;
+function dicter(id,btn){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert("La dictée vocale n'est pas disponible sur ce navigateur.");return}
+  if(REC){REC.stop();return}
+  const r=new SR();REC=r;r.lang="fr-FR";r.interimResults=false;r.continuous=true;
+  btn.classList.add("rec");btn.textContent="⏹";
+  r.onresult=e=>{let t="";
+    for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)t+=e.results[i][0].transcript+" ";
+    if(t){const o=cur.journal.find(x=>x.id===id);if(o){o.notes=(o.notes?o.notes.trim()+" ":"")+t.trim();persist();
+      const ta=btn.closest(".jour-entry").querySelector("textarea");if(ta)ta.value=o.notes}}};
+  const fin=()=>{btn.classList.remove("rec");btn.textContent="🎤";REC=null};
+  r.onend=fin;r.onerror=fin;
+  r.start();
+}
+function renderJournal(m){
+  const dates=[...new Set(cur.journal.map(o=>o.date))].sort();
+  m.innerHTML=`
+  <div class="card"><h2>📓 Journal d'observation terrain</h2>
+    <p class="hint">Pour les suivis sur plusieurs jours ou plusieurs étapes de production : notez chaque observation datée (étape, constats, photos). Le journal alimente ensuite le profil d'exigences (étape 4) et la grille (étape 5), et figure dans le rapport. Le bouton 🎤 permet de dicter les notes mains libres.</p>
+    <button class="btn orange" onclick="addObs()">➕ Nouvelle observation (maintenant)</button>
+    <button class="btn sec" onclick="prechargerEtapes(ETAPES_FROMAGE)">🧀 Précharger les étapes d'une production fromagère</button>
+  </div>
+  ${dates.map(d=>`
+    <p class="jour-date">📅 ${fmtD(d)}</p>
+    ${cur.journal.filter(o=>o.date===d).sort((a,b)=>(a.heure||"")<(b.heure||"")?-1:1).map(o=>`
+    <div class="jour-entry">
+      <div class="row2">
+        <span><label class="f">Date / heure</label><span style="display:flex;gap:6px"><input type="date" value="${o.date}" onchange="updObs('${o.id}','date',this.value)"><input type="time" value="${esc(o.heure)}" onchange="updObs('${o.id}','heure',this.value)" style="width:110px"></span></span>
+        <span><label class="f">Étape / poste observé</label><input type="text" value="${esc(o.etape)}" placeholder="Ex : Moulage" oninput="updObs('${o.id}','etape',this.value)"></span>
+      </div>
+      <label class="f">Observations (contraintes, gestes, environnement, échanges…)</label>
+      <textarea oninput="updObs('${o.id}','notes',this.value)">${esc(o.notes)}</textarea>
+      <div class="photo-row">
+        <button class="micbtn" onclick="dicter('${o.id}',this)">🎤</button>
+        ${(o.p||[]).map((p,ix)=>`<span style="position:relative"><img src="${p}"><button onclick="delObsPhoto('${o.id}',${ix})" style="position:absolute;top:-6px;right:-6px;border:none;background:var(--rouge);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px">✕</button></span>`).join("")}
+        <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
+        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="obsPhoto('${o.id}',this)">
+        <button class="btn danger small" onclick="delObs('${o.id}')">Suppr.</button>
+      </div>
+    </div>`).join("")}`).join("")}
+  ${cur.journal.length===0?`<div class="card"><p class="hint">Aucune observation pour l'instant. Exemple d'usage : suivi d'une production sur 2 jours — créez une observation par étape (réception du lait, caillage, moulage, affinage…), dictez vos constats, photographiez les postes.</p></div>`:""}`;
+}
+
+/* ---------- 4. EXIGENCES (données de matching) ---------- */
+function setDim(id,k,v){
+  const d=cur.exig.dims[id]=cur.exig.dims[id]||{niv:0,adapt:"oui",com:""};
+  d[k]=v;persist();if(k!=="com")render();
+}
+function renderExig(m){
+  m.innerHTML=`
+  <div class="avert">🎯 Cœur du matching Rayoneo : pour chaque capacité, indiquez le <b>niveau requis</b> par le poste et si cette exigence est <b>adaptable</b> (aménagement, réattribution de tâche, aide technique). Ces données seront croisées avec les profils candidats de la base.</div>
+  <div class="card"><h2>⚖️ Profil d'exigences du poste</h2>
+    ${DIMS.map(([id,lb])=>{
+      const d=cur.exig.dims[id]||{niv:0,adapt:"oui",com:""};
+      return `<div class="item">
+        <div class="lbl">${lb}</div>
+        <div class="nivs">${NIVX.map((n,i)=>`<button class="nbtn n${i} ${d.niv===i?"on":""}" onclick="setDim('${id}','niv',${i})">${n}</button>`).join("")}</div>
+        ${d.niv>0?`<label class="f" style="margin-top:8px">Cette exigence est-elle adaptable ?</label>
+        <div class="adapts">${Object.entries(ADAPTX).map(([k,v])=>`<button class="nbtn ${d.adapt===k?"on":""}" onclick="setDim('${id}','adapt','${k}')">${v}</button>`).join("")}</div>
+        <textarea placeholder="Précision (comment adapter, sur quelles tâches…)" oninput="setDim('${id}','com',this.value)">${esc(d.com||"")}</textarea>`:""}
+      </div>`}).join("")}
+  </div>
+  <div class="card">${TA("exig.note","Remarques sur le profil d'exigences","Marges de manœuvre du poste, possibilités de réorganisation des tâches entre collègues…")}</div>`;
+}
+
+/* ---------- 4. GRILLE ---------- */
+function setNote(iid,n){cur.grille[iid]=cur.grille[iid]||{};cur.grille[iid].n=cur.grille[iid].n===n?"":n;persist();render()}
+function setCom(iid,v){cur.grille[iid]=cur.grille[iid]||{};cur.grille[iid].c=v;persist()}
+function addPhoto(iid,inp){
+  const f=inp.files[0];if(!f)return;
+  const img=new Image();const rd=new FileReader();
+  rd.onload=()=>{img.onload=()=>{
+    const cv=document.createElement("canvas");const MAX=900;
+    let w=img.width,h=img.height;const r=Math.min(1,MAX/Math.max(w,h));
+    cv.width=w*r;cv.height=h*r;
+    cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+    cur.grille[iid]=cur.grille[iid]||{};
+    (cur.grille[iid].p=cur.grille[iid].p||[]).push(cv.toDataURL("image/jpeg",.55));
+    persist();render();
+  };img.src=rd.result};
+  rd.readAsDataURL(f);
+}
+function delPhoto(iid,ix){cur.grille[iid].p.splice(ix,1);persist();render()}
+function statCounts(){
+  const c={C:0,A:0,B:0,N:0};
+  Object.values(cur.grille).forEach(g=>{if(g.n)c[g.n]++});return c;
+}
+function renderGrille(m){
+  const c=statCounts();
+  m.innerHTML=`
+  <div class="card"><h2>📊 Avancement</h2>
+    <div class="stat">
+      <div class="s-C"><b>${c.C}</b>Conforme</div><div class="s-A"><b>${c.A}</b>À adapter</div>
+      <div class="s-B"><b>${c.B}</b>Bloquant</div><div class="s-N"><b>${c.N}</b>Non conc.</div>
+    </div>
+    <p class="hint">Pour chaque point : <b>Conforme</b> · <b>À adapter</b> (aménagement nécessaire) · <b>Bloquant</b> (obstacle majeur) · <b>N/C</b>. Ajoutez commentaires et photos.</p>
+  </div>
+  ${GRILLE.map(d=>`
+  <div class="card"><h2>${d.ic} ${d.t}</h2>
+    ${d.items.map((it,i)=>{
+      const iid=d.id+"_"+i;const g=cur.grille[iid]||{};
+      return `<div class="item">
+        <div class="lbl">${esc(it)} ${g.n?`<span class="pill ${g.n}">${NOTES[g.n]}</span>`:""}</div>
+        <div class="notes">${["C","A","B","N"].map(n=>`<button class="nbtn ${n} ${g.n===n?"on":""}" onclick="setNote('${iid}','${n}')">${NOTES[n]}</button>`).join("")}</div>
+        <textarea placeholder="Observation…" oninput="setCom('${iid}',this.value)">${esc(g.c||"")}</textarea>
+        <div class="photo-row">
+          ${(g.p||[]).map((p,ix)=>`<span style="position:relative"><img src="${p}"><button onclick="delPhoto('${iid}',${ix})" style="position:absolute;top:-6px;right:-6px;border:none;background:var(--rouge);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px">✕</button></span>`).join("")}
+          <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
+          <input type="file" accept="image/*" capture="environment" class="hidden" onchange="addPhoto('${iid}',this)">
+        </div>
+      </div>`}).join("")}
+  </div>`).join("")}
+  <div class="card">${TA("synthese","Synthèse libre de l'auditeur","Impression générale, points de vigilance, atouts de la structure…")}</div>`;
+}
+
+/* ---------- 5. PRÉCONISATIONS ---------- */
+function finsFor(ids){
+  const sect=cur.infos.secteur==="public"?"public":"prive";
+  return ids.filter(id=>{const f=FIN[id];return f.s==="tous"||f.s===sect});
+}
+function genererPrecos(){
+  const keep=cur.precos.filter(p=>p.manuel);
+  const out=[];
+  GRILLE.forEach(d=>{
+    const flagged=d.items.map((it,i)=>({it,g:cur.grille[d.id+"_"+i]||{}}))
+      .filter(x=>x.g.n==="A"||x.g.n==="B");
+    if(!flagged.length)return;
+    const bloquant=flagged.some(x=>x.g.n==="B");
+    const map=PRECO_MAP[d.id];
+    out.push({id:"p"+d.id,dom:d.t,manuel:false,
+      titre:(bloquant?"⚠️ ":"")+d.t+" — "+flagged.length+" point(s) à traiter",
+      detail:map.a+"\nPoints relevés :\n"+flagged.map(x=>"• "+x.it+(x.g.c?" — "+x.g.c:"")).join("\n"),
+      priorite:bloquant?"haute":"moyenne",cout:"",cmin:COUTS[d.id][0],cmax:COUTS[d.id][1],fins:finsFor(map.f),statut:"a_faire"});
+  });
+  cur.precos=[...out,...keep];persist();render();
+}
+function addPrecoManuelle(){
+  cur.precos.push({id:"pm"+Date.now(),dom:"Manuel",manuel:true,titre:"Nouvelle préconisation",
+   detail:"",priorite:"moyenne",cout:"",cmin:0,cmax:0,fins:[],statut:"a_faire"});
+  persist();render();
+}
+function updPreco(id,k,v){const p=cur.precos.find(x=>x.id===id);if(p){p[k]=v;persist();if(k==="priorite")render()}}
+function delPreco(id){cur.precos=cur.precos.filter(x=>x.id!==id);persist();render()}
+function togglePrecoFin(id,fid){
+  const p=cur.precos.find(x=>x.id===id);const i=p.fins.indexOf(fid);
+  if(i>=0)p.fins.splice(i,1);else p.fins.push(fid);persist();render();
+}
+function renderPrecos(m){
+  const sect=cur.infos.secteur==="public"?"public":"prive";
+  m.innerHTML=`
+  <div class="card"><h2>💡 Préconisations sur le poste</h2>
+    <p class="hint">Générées à partir des points « À adapter » et « Bloquant » de la grille. Ces préconisations rendent le poste accueillant quel que soit le candidat ; les aménagements individuels seront affinés une fois le candidat matché. Fléchage ${sect==="public"?"FIPHFP":"Agefiph"} + droit commun, modifiable.</p>
+    <button class="btn teal" onclick="genererPrecos()">⚙️ Générer / regénérer les préconisations</button>
+    <button class="btn sec" onclick="addPrecoManuelle()">➕ Ajouter une préconisation manuelle</button>
+  </div>
+  ${cur.precos.length?cur.precos.map(p=>`
+  <div class="preco ${p.priorite==="haute"?"B":p.priorite==="basse"?"basse":""}">
+    <input type="text" style="font-weight:700;border:none;padding:2px 0;width:100%" value="${esc(p.titre)}" oninput="updPreco('${p.id}','titre',this.value)">
+    <span class="tag">${esc(p.dom)}</span>
+    <textarea style="margin-top:8px" oninput="updPreco('${p.id}','detail',this.value)">${esc(p.detail)}</textarea>
+    <div class="meta">
+      <select style="width:auto;padding:7px" onchange="updPreco('${p.id}','priorite',this.value)">
+        ${[["haute","Priorité haute"],["moyenne","Priorité moyenne"],["basse","Priorité basse"]].map(o=>`<option value="${o[0]}" ${o[0]===p.priorite?"selected":""}>${o[1]}</option>`).join("")}
+      </select>
+      <input type="number" placeholder="Coût min €" style="width:115px" value="${p.cmin||""}" oninput="updPreco('${p.id}','cmin',this.value)">
+      <input type="number" placeholder="Coût max €" style="width:115px" value="${p.cmax||""}" oninput="updPreco('${p.id}','cmax',this.value)">
+      <button class="btn danger small" onclick="delPreco('${p.id}')">Suppr.</button>
+    </div>
+    ${p.fins.map(fid=>{const f=FIN[fid];return `<div class="fin"><b>${esc(f.n)}</b> — ${esc(f.m)}<br><span style="color:var(--gris)">${esc(f.d)}</span>${f.u?`<br><a href="${f.u}" target="_blank" rel="noopener">${f.u.replace("https://www.","")}</a>`:""}</div>`}).join("")}
+    <details style="margin-top:8px"><summary style="font-size:13px;color:var(--bleu2);font-weight:600">Modifier les financements fléchés</summary>
+      <div class="chips" style="margin-top:8px">${Object.keys(FIN).filter(fid=>FIN[fid].s==="tous"||FIN[fid].s===sect).map(fid=>`<button class="chip ${p.fins.includes(fid)?"on":""}" onclick="togglePrecoFin('${p.id}','${fid}')">${esc(FIN[fid].n.split("—")[0].trim())}</button>`).join("")}</div>
+    </details>
+  </div>`).join(""):`<div class="card"><p class="hint">Aucune préconisation. Remplissez la grille (étape 4) puis générez.</p></div>`}
+  ${cur.precos.length?`<div class="card"><h2>💰 Budget prévisionnel des adaptations</h2>
+    <table class="bud"><tr><th>Préconisation</th><th>Min</th><th>Max</th></tr>
+    ${cur.precos.map(p=>`<tr><td>${esc(p.titre)}</td><td>${fmtE(p.cmin)}</td><td>${fmtE(p.cmax)}</td></tr>`).join("")}
+    <tr><th>Total indicatif</th><th>${fmtE(budgetTotaux()[0])}</th><th>${fmtE(budgetTotaux()[1])}</th></tr></table>
+    <p class="hint">Fourchettes indicatives préremplies par domaine, à affiner sur devis (ajustez min/max sur chaque préconisation). Rappel : l'Agefiph peut couvrir jusqu'à 90 % du surcoût de compensation (privé) et le FIPHFP jusqu'à 10 000 € par aménagement (public) — le reste à charge réel est généralement très inférieur au total.</p>
+  </div>`:""}`;
+}
+
+/* ---------- 6. MATCHING : compatibilité + export ---------- */
+function compatFam(fk){
+  const fam=FAMS[fk];
+  let worst=0;const raisons=[];
+  fam.dims.forEach(did=>{
+    const d=cur.exig.dims[did];if(!d||!d.niv)return;
+    const lb=DIMS.find(x=>x[0]===did)[1];
+    let s=0;
+    if(d.niv>=3&&d.adapt==="non")s=3;
+    else if(d.niv>=3&&d.adapt==="partiel")s=2.5;
+    else if(d.niv>=2&&d.adapt==="non")s=2;
+    else if(d.niv>=2)s=1.5;
+    else s=0.5;
+    if(s>=1.5)raisons.push(lb+" (niveau "+NIVX[d.niv].toLowerCase()+", "+ADAPTX[d.adapt].toLowerCase()+")");
+    worst=Math.max(worst,s);
+  });
+  // aggraver si le domaine sensible de la grille a des bloquants non traités
+  const dom=GRILLE.find(g=>g.id===fam.dom);
+  const bloq=dom?dom.items.filter((it,i)=>(cur.grille[fam.dom+"_"+i]||{}).n==="B"):[];
+  if(bloq.length){worst=Math.max(worst,2);raisons.push("Point(s) bloquant(s) dans « "+dom.t+" » à lever")}
+  let statut,cls;
+  if(worst>=3){statut="Vigilance forte : exigence élevée non adaptable";cls="vig"}
+  else if(worst>=2){statut="Compatible sous réserve d'aménagements significatifs";cls="am"}
+  else if(worst>=1.5){statut="Compatible avec aménagements";cls="am"}
+  else{statut="A priori compatible";cls="ok"}
+  return {statut,cls,raisons,worst};
+}
+function matchingData(){
+  const c=statCounts();
+  const dims={};DIMS.forEach(([id])=>{const d=cur.exig.dims[id];if(d&&d.niv)dims[id]={niveau:d.niv,adaptable:d.adapt||"oui",commentaire:d.com||""}});
+  const compat={};Object.keys(FAMS).forEach(fk=>{const r=compatFam(fk);compat[fk]={statut:r.statut,score:r.worst,points_vigilance:r.raisons}});
+  const domaines={};GRILLE.forEach(d=>{
+    const notes=d.items.map((it,i)=>cur.grille[d.id+"_"+i]||{}).filter(g=>g.n);
+    domaines[d.id]={label:d.t,conformes:notes.filter(g=>g.n==="C").length,a_adapter:notes.filter(g=>g.n==="A").length,bloquants:notes.filter(g=>g.n==="B").length};
+  });
+  return {
+    format:"rayoneo-poste-v3",genere_le:new Date().toISOString(),
+    journal_observations:cur.journal.map(j=>({date:j.date,heure:j.heure,etape:j.etape,notes:j.notes})),
+    poste:{intitule:cur.infos.poste,service:cur.infos.service,contrat:cur.infos.contrat,
+      entreprise:cur.infos.entreprise,secteur:cur.infos.secteur,effectif:cur.infos.effectif,
+      adresse:cur.infos.adresse,date_embauche_cible:cur.infos.dateEmbauche,
+      mission:cur.taches.description,taches:cur.taches.principales,contraintes:cur.taches.exigences},
+    exigences:dims,exigences_note:cur.exig.note,
+    audit:{date:cur.infos.dateAudit,auditeur:cur.infos.auditeur,synthese:cur.synthese,
+      total_conformes:c.C,total_a_adapter:c.A,total_bloquants:c.B,domaines},
+    compatibilite:compat,
+    structure:{siren:cur.infos.siren,naf:cur.infos.naf,nature_juridique:cur.infos.catju,tranche_effectif:cur.infos.tranche,statut_particulier:cur.infos.ea},
+    eligibilite:eligibilite().map(e=>e.t),
+    budget_adaptations:{min:budgetTotaux()[0],max:budgetTotaux()[1],devise:"EUR",caractere:"indicatif"},
+    preconisations:cur.precos.map(p=>({titre:p.titre,priorite:p.priorite,cout_min:+p.cmin||0,cout_max:+p.cmax||0,financements:p.fins.map(f=>FIN[f].n)}))
+  };
+}
+function exportMatching(){
+  const data=matchingData();
+  const blob=new Blob([JSON.stringify(data,null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="rayoneo-matching-"+(cur.infos.poste||"poste").replace(/\W+/g,"-").toLowerCase()+".json";a.click();
+}
+async function copierMatching(){
+  try{await navigator.clipboard.writeText(JSON.stringify(matchingData(),null,1));alert("Données copiées dans le presse-papiers.")}
+  catch(e){alert("Copie impossible : utilisez le téléchargement.")}
+}
+function renderMatch(m){
+  const nb=Object.values(cur.exig.dims).filter(d=>d.niv).length;
+  m.innerHTML=`
+  <div class="card"><h2>🧲 Compatibilité du poste par famille de handicap</h2>
+    <p class="hint">Calculée à partir du profil d'exigences (étape 3) et des bloquants de la grille (étape 4). Indicatif : c'est le matching Rayoneo avec le profil individuel du candidat qui tranche. ${nb===0?"<b>Renseignez d'abord l'étape 3.</b>":""}</p>
+  </div>
+  ${Object.entries(FAMS).map(([fk,fam])=>{
+    const r=compatFam(fk);
+    return `<div class="fam">
+      <h4>${fam.t} <span class="pill ${r.cls}">${r.statut}</span></h4>
+      ${r.raisons.length?`<div class="det"><b>Points de vigilance :</b><br>• ${r.raisons.map(esc).join("<br>• ")}</div>`:`<div class="det">Aucune exigence critique détectée pour cette famille.</div>`}
+      <div class="det" style="margin-top:6px"><b>Aménagements types :</b> ${esc(fam.am)}<br>
+      <span style="color:var(--teal);font-weight:600">${finsFor(fam.f).map(f=>FIN[f].n.split("—")[0].trim()+(FIN[f].m.startsWith("Jusqu")?" ("+FIN[f].m.split(",")[0]+")":"")).join(" · ")}</span></div>
+    </div>`}).join("")}
+  <div class="card"><h2>📤 Export vers la base Rayoneo</h2>
+    <p class="hint">Fichier JSON structuré (format <b>rayoneo-poste-v2</b>) : profil d'exigences, résultats d'audit par domaine, compatibilités, préconisations. À injecter dans votre base pour le matching candidats.</p>
+    <button class="btn orange" onclick="exportMatching()">⬇️ Télécharger les données de matching (JSON)</button>
+    <button class="btn sec" onclick="copierMatching()">📋 Copier dans le presse-papiers</button>
+    <details style="margin-top:10px"><summary style="font-size:13px;color:var(--bleu2);font-weight:600">Aperçu des données</summary>
+    <pre class="json">${esc(JSON.stringify(matchingData(),null,1))}</pre></details>
+  </div>`;
+}
+
+/* ---------- 7. PLAN D'ACTION ---------- */
+function genererPlan(){
+  if(!cur.infos.dateEmbauche){alert("Renseignez d'abord la date d'embauche cible (étape 1).");setSection("infos");return}
+  const keep=cur.plan.filter(t=>t.manuel);
+  const base=new Date(cur.infos.dateEmbauche+"T00:00:00");
+  const out=JALONS.map((j,i)=>{
+    const d=new Date(base);d.setDate(d.getDate()+j[0]);
+    return {id:"j"+i,date:d.toISOString().slice(0,10),titre:j[1],resp:j[2],fait:false,manuel:false};
+  });
+  cur.precos.filter(p=>p.priorite==="haute").forEach((p,i)=>{
+    const d=new Date(base);d.setDate(d.getDate()-30);
+    out.push({id:"jp"+i,date:d.toISOString().slice(0,10),titre:"Traiter (bloquant) : "+p.titre.replace("⚠️ ",""),resp:"Employeur + Rayoneo",fait:false,manuel:false});
+  });
+  cur.plan=[...out,...keep].sort((a,b)=>a.date<b.date?-1:1);persist();render();
+}
+function addTache(){cur.plan.push({id:"t"+Date.now(),date:new Date().toISOString().slice(0,10),titre:"Nouvelle tâche",resp:"",fait:false,manuel:true});persist();render()}
+function updT(id,k,v){const t=cur.plan.find(x=>x.id===id);if(t){t[k]=k==="fait"?v.checked:v;persist();if(k==="fait")render()}}
+function delT(id){cur.plan=cur.plan.filter(x=>x.id!==id);persist();render()}
+function renderPlan(m){
+  m.innerHTML=`
+  <div class="card"><h2>🗓️ Plan d'action & agenda</h2>
+    <p class="hint">Agenda calé sur la date d'embauche cible (${cur.infos.dateEmbauche?fmtD(cur.infos.dateEmbauche):"non renseignée"}) : matching Rayoneo dès J−60, choix du candidat vers J−45, financements à J−30, jusqu'au bilan J+180. Les préconisations « priorité haute » sont injectées automatiquement.</p>
+    <button class="btn teal" onclick="genererPlan()">⚙️ Générer / regénérer l'agenda</button>
+    <button class="btn sec" onclick="addTache()">➕ Ajouter une tâche</button>
+  </div>
+  ${cur.plan.length?`<div class="card">${cur.plan.map(t=>`
+    <div class="plan-li ${t.fait?"done":""}">
+      <input type="checkbox" ${t.fait?"checked":""} onchange="updT('${t.id}','fait',this)" style="width:22px;height:22px;margin-top:3px">
+      <div class="dt"><input type="date" style="padding:4px;font-size:12px" value="${t.date}" onchange="updT('${t.id}','date',this.value)"></div>
+      <div style="flex:1">
+        <input class="tt" type="text" style="border:none;padding:0;font-weight:600;width:100%;font-size:14px;background:transparent" value="${esc(t.titre)}" oninput="updT('${t.id}','titre',this.value)">
+        <input type="text" placeholder="Responsable" style="border:none;padding:0;font-size:12.5px;color:var(--gris);width:100%;background:transparent" value="${esc(t.resp)}" oninput="updT('${t.id}','resp',this.value)">
+      </div>
+      <button onclick="delT('${t.id}')" style="border:none;background:none;color:var(--rouge);font-size:16px">✕</button>
+    </div>`).join("")}</div>`:""}`;
+}
+
+/* ---------- 8. RAPPORT ---------- */
+function renderRapportMenu(m){
+  m.innerHTML=`
+  <div class="card"><h2>📄 Rapport d'audit</h2>
+    <p style="font-size:14px">Le rapport compile tout : contexte, poste, profil d'exigences, grille détaillée avec photos, compatibilités par famille de handicap, préconisations, financements fléchés et plan d'action.</p>
+    <button class="btn orange" onclick="voirRapport()">👁️ Aperçu du rapport</button>
+    <button class="btn" onclick="voirRapport(true)">🖨️ Imprimer / Enregistrer en PDF</button>
+    <p class="hint">Sur Android : « Imprimer » puis « Enregistrer au format PDF ».</p>
+  </div>
+  <div class="card"><h2>💾 Exports</h2>
+    <button class="btn sec" onclick="exportMatching()">Données de matching (JSON base Rayoneo)</button>
+    <button class="btn sec" onclick="exportAuditSeul()">Audit complet (JSON de sauvegarde)</button>
+  </div>`;
+}
+function exportAuditSeul(){
+  const blob=new Blob([JSON.stringify([cur],null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="audit-"+(cur.infos.poste||"poste").replace(/\W+/g,"-").toLowerCase()+".json";a.click();
+}
+function voirRapport(print){
+  buildRapport();
+  $("app").classList.add("hidden");hideNav();$("fbar").classList.add("hidden");
+  $("rapport").classList.remove("hidden");
+  window.scrollTo(0,0);
+  if(print)setTimeout(()=>window.print(),300);
+}
+function buildRapport(){
+  const a=cur,c=statCounts();
+  const sect={prive:"Secteur privé",public:"Fonction publique",asso:"Association"}[a.infos.secteur];
+  const finUsed={};cur.precos.forEach(p=>p.fins.forEach(f=>finUsed[f]=true));
+  const dimsRows=DIMS.map(([id,lb])=>{
+    const d=a.exig.dims[id];if(!d||!d.niv)return"";
+    return `<tr><td>${lb}</td><td>${NIVX[d.niv]}</td><td>${ADAPTX[d.adapt]||"—"}</td><td>${esc(d.com||"")}</td></tr>`;
+  }).join("");
+  let S=3; /* numérotation dynamique des sections après "3. Le poste" */
+  $("rapport").innerHTML=`
+  <div class="no-print" style="padding:10px 0;display:flex;gap:8px">
+    <button class="btn sec small" onclick="render()">← Retour</button>
+    <button class="btn small" onclick="window.print()">🖨️ Imprimer / PDF</button>
+  </div>
+  <div class="cartouche">
+    <h1>Rapport d'analyse de poste</h1>
+    <p style="color:var(--teal);font-weight:700">Rayoneo · DNA Conseil et formations — démarche « zéro barrière »</p>
+    <table><tr><th>Structure</th><td>${esc(a.infos.entreprise)||"—"} (${sect}, ${esc(a.infos.effectif)||"?"} salariés)</td></tr>
+    ${a.infos.siren?`<tr><th>SIREN / NAF</th><td>${esc(a.infos.siren)}${a.infos.naf?" · NAF "+esc(a.infos.naf):""} <span style="color:var(--gris);font-size:11px">(source : annuaire officiel INSEE/RNE)</span></td></tr>`:""}
+    <tr><th>Poste analysé</th><td>${esc(a.infos.poste)||"—"} — ${esc(a.infos.service)||""} (${esc(a.infos.contrat)})</td></tr>
+    <tr><th>Date de l'audit</th><td>${fmtD(a.infos.dateAudit)}</td></tr>
+    <tr><th>Embauche cible</th><td>${fmtD(a.infos.dateEmbauche)}</td></tr>
+    <tr><th>Auditeur</th><td>${esc(a.infos.auditeur)||"—"}</td></tr>
+    <tr><th>Contact</th><td>${esc(a.infos.contact)||"—"} ${a.infos.refHandicap?"· Référent handicap : "+esc(a.infos.refHandicap):""}</td></tr></table>
+  </div>
+
+  <h2>1. Synthèse</h2>
+  <table><tr><th>Conformes</th><th>À adapter</th><th>Bloquants</th><th>Non concernés</th></tr>
+  <tr><td>${c.C}</td><td>${c.A}</td><td><b>${c.B}</b></td><td>${c.N}</td></tr></table>
+  ${c.B>0?`<p><b style="color:var(--rouge)">⚠️ ${c.B} point(s) bloquant(s)</b> identifié(s) : leur traitement conditionne l'accueil d'un candidat.</p>`:`<p>Aucun point bloquant identifié.</p>`}
+  ${a.synthese?`<h3>Synthèse de l'auditeur</h3><p>${esc(a.synthese).replace(/\n/g,"<br>")}</p>`:""}
+  <p style="font-size:12px">Ce rapport caractérise le poste <b>avant identification du candidat</b>. Les données d'exigences sont transmises à la base Rayoneo pour matcher les profils compatibles ; les aménagements individuels seront affinés avec le candidat retenu.</p>
+
+  <h2>2. Structure : éligibilité et obligations</h2>
+  ${eligibilite().map(e=>`<div class="eli ${e.cls}" style="margin-bottom:6px"><b>${esc(e.t)}</b>${esc(e.d)}</div>`).join("")}
+
+  <h2>3. Le poste et ses tâches</h2>
+  ${a.taches.description?`<h3>Mission</h3><p>${esc(a.taches.description).replace(/\n/g,"<br>")}</p>`:""}
+  ${a.taches.principales?`<h3>Tâches principales</h3><p>${esc(a.taches.principales).replace(/\n/g,"<br>")}</p>`:""}
+  ${a.taches.exigences?`<h3>Contraintes particulières</h3><p>${esc(a.taches.exigences).replace(/\n/g,"<br>")}</p>`:""}
+
+  ${cur.journal.length?`<h2>${++S}. Journal d'observation terrain</h2>
+  ${[...new Set(cur.journal.map(o=>o.date))].sort().map(d=>`<h3>📅 ${fmtD(d)}</h3>
+  <table><tr><th style="width:60px">Heure</th><th style="width:26%">Étape / poste</th><th>Observations</th></tr>
+  ${cur.journal.filter(o=>o.date===d).sort((x,y)=>(x.heure||"")<(y.heure||"")?-1:1).map(o=>`<tr><td>${esc(o.heure)||"—"}</td><td>${esc(o.etape)||"—"}</td><td>${esc(o.notes).replace(/\n/g,"<br>")}${(o.p||[]).map(p=>`<br><img class="rphoto" src="${p}">`).join("")}</td></tr>`).join("")}</table>`).join("")}`:""}
+
+  <h2>${++S}. Profil d'exigences du poste (données de matching)</h2>
+  ${dimsRows?`<table><tr><th>Capacité mobilisée</th><th>Niveau requis</th><th>Adaptabilité</th><th>Précisions</th></tr>${dimsRows}</table>`:"<p>Profil d'exigences non renseigné.</p>"}
+  ${a.exig.note?`<p><b>Remarques :</b> ${esc(a.exig.note).replace(/\n/g,"<br>")}</p>`:""}
+
+  <h2>${++S}. Compatibilité indicative par famille de handicap</h2>
+  <table><tr><th>Famille</th><th>Compatibilité</th><th>Points de vigilance</th><th>Aménagements types</th></tr>
+  ${Object.entries(FAMS).map(([fk,fam])=>{const r=compatFam(fk);
+    return `<tr><td>${fam.t}</td><td><span class="pill ${r.cls}">${r.statut}</span></td><td>${r.raisons.length?r.raisons.map(esc).join("<br>"):"—"}</td><td style="font-size:11.5px">${esc(fam.am)}</td></tr>`}).join("")}
+  </table>
+  <p style="font-size:11.5px;color:var(--gris)">Compatibilités indicatives calculées sur le profil d'exigences du poste. La décision se fait toujours au regard du profil individuel du candidat (matching Rayoneo), jamais de la seule famille de handicap.</p>
+
+  <h2>${++S}. Grille d'audit détaillée</h2>
+  ${GRILLE.map(d=>{
+    const rows=d.items.map((it,i)=>{const g=a.grille[d.id+"_"+i]||{};if(!g.n)return"";
+      return `<tr><td>${esc(it)}</td><td style="white-space:nowrap"><span class="pill ${g.n}">${NOTES[g.n]}</span></td><td>${esc(g.c||"")}${(g.p||[]).map(p=>`<br><img class="rphoto" src="${p}">`).join("")}</td></tr>`}).join("");
+    return rows?`<h3>${d.ic} ${d.t}</h3><table><tr><th style="width:42%">Point de contrôle</th><th>Évaluation</th><th>Observations</th></tr>${rows}</table>`:"";
+  }).join("")}
+
+  <h2>${++S}. Préconisations & adaptations du poste</h2>
+  ${cur.precos.length?cur.precos.map((p,i)=>`
+   <div class="preco ${p.priorite==="haute"?"B":""}" style="margin-bottom:8px">
+     <h4>${i+1}. ${esc(p.titre)} <span class="tag">${{haute:"PRIORITÉ HAUTE",moyenne:"Priorité moyenne",basse:"Priorité basse"}[p.priorite]}</span>${(p.cmin||p.cmax)?` <span class="tag">Coût indicatif : ${fmtE(p.cmin)} – ${fmtE(p.cmax)}</span>`:""}</h4>
+     <p style="font-size:12.5px">${esc(p.detail).replace(/\n/g,"<br>")}</p>
+     ${p.fins.map(fid=>{const f=FIN[fid];return `<div class="fin"><b>💶 ${esc(f.n)}</b> — ${esc(f.m)}<br>${esc(f.d)}${f.u?`<br><span style="color:var(--bleu2)">${f.u}</span>`:""}</div>`}).join("")}
+   </div>`).join(""):"<p>Aucune préconisation enregistrée.</p>"}
+
+  <h2>${++S}. Budget prévisionnel des adaptations</h2>
+  ${cur.precos.length?`<table><tr><th>Préconisation</th><th>Priorité</th><th>Min</th><th>Max</th></tr>
+   ${cur.precos.map(p=>`<tr><td>${esc(p.titre)}</td><td>${{haute:"Haute",moyenne:"Moyenne",basse:"Basse"}[p.priorite]}</td><td>${fmtE(p.cmin)}</td><td>${fmtE(p.cmax)}</td></tr>`).join("")}
+   <tr><th colspan="2">Total indicatif avant financements</th><th>${fmtE(budgetTotaux()[0])}</th><th>${fmtE(budgetTotaux()[1])}</th></tr></table>
+   <p style="font-size:11.5px;color:var(--gris)">Fourchettes indicatives à confirmer par devis. Après mobilisation des aides (section suivante), le reste à charge employeur est généralement très inférieur à ce total : l'Agefiph peut couvrir jusqu'à 90 % du surcoût de compensation (secteur privé) et le FIPHFP jusqu'à 10 000 € par aménagement (fonction publique), hors obligations légales de droit commun qui restent à la charge de l'employeur.</p>`
+   :"<p>Générer les préconisations pour établir le budget.</p>"}
+
+  <h2>${++S}. Financements mobilisables — récapitulatif</h2>
+  <table><tr><th>Dispositif</th><th>Montant / prise en charge</th><th>Où s'adresser</th></tr>
+  ${Object.keys(finUsed).length?Object.keys(finUsed).map(fid=>{const f=FIN[fid];
+    return `<tr><td>${esc(f.n)}</td><td>${esc(f.m)}</td><td>${f.u?f.u:"Via l'employeur / SPST"}</td></tr>`}).join("")
+   :"<tr><td colspan='3'>Générer les préconisations pour flécher les financements.</td></tr>"}
+  </table>
+  <p style="font-size:11.5px;color:var(--gris)">Barèmes indicatifs vérifiés sur les publications Agefiph et FIPHFP de janvier 2026 — à confirmer au dépôt de chaque dossier. La plupart des aides supposent une RQTH ou un titre de bénéficiaire de l'obligation d'emploi du candidat retenu.</p>
+
+  <h2>${++S}. Plan d'action — agenda</h2>
+  ${cur.plan.length?`<table><tr><th style="width:90px">Échéance</th><th>Action</th><th>Responsable</th><th style="width:50px">Fait</th></tr>
+   ${cur.plan.map(t=>`<tr><td>${fmtD(t.date)}</td><td>${esc(t.titre)}</td><td>${esc(t.resp)}</td><td style="text-align:center">${t.fait?"✅":"◻︎"}</td></tr>`).join("")}</table>`
+   :"<p>Générer l'agenda depuis l'étape 7 (nécessite la date d'embauche cible)."}
+
+  <div class="sign"><div>Pour l'employeur — nom, date, signature</div><div>Pour Rayoneo / DNA Conseil et formations — nom, date, signature</div></div>
+  <p style="font-size:11px;color:var(--gris);margin-top:14px">Rapport généré le ${new Date().toLocaleDateString("fr-FR")} avec l'application Rayoneo Analyse de poste. Document confidentiel — diffusion restreinte aux parties prenantes du projet de recrutement.</p>
+  <div class="gradband"></div>`;
+}
+
+/* ---------- ASSISTANT CLAUDE INTÉGRÉ ---------- */
+let CHAT=[];let IA_BUSY=false;
+const MODELES={haiku:["claude-haiku-4-5-20251001","Haiku · rapide"],sonnet:["claude-sonnet-5","Sonnet · équilibré"],fable:["claude-fable-5","Fable · analyse avancée"]};
+const iaKey=()=>localStorage.getItem("rayoneo_ia_key")||"";
+const iaMode=()=>localStorage.getItem("rayoneo_ia_mode")||"auto";
+function choisirModele(q){
+  const m=iaMode();if(m!=="auto")return m;
+  const t=q.toLowerCase();
+  if(q.length>500||/stratég|juridiq|réglement|approfondi|argumentaire|négoci|convention|éligib|comparatif|arbitr|expertise|complexe|rapport complet|rédige la synthèse/.test(t))return"fable";
+  if(q.length<220&&/corrig|orthograph|reformul|traduis|résume|raccourci|synonyme|titre|liste rapide|une phrase/.test(t))return"haiku";
+  return"sonnet";
+}
+function iaCtx(){
+  if(!cur)return"Aucun audit ouvert (écran d'accueil).";
+  try{const d=matchingData();delete d.preconisations;
+    let s=JSON.stringify(d);if(s.length>7000)s=s.slice(0,7000)+"…";
+    return"Section affichée : "+(LABELS[curSection]||curSection)+". Données de l'audit (JSON) : "+s;
+  }catch(e){return"Audit : "+JSON.stringify(cur.infos)}
+}
+function iaToggle(){
+  const p=$("iapanel");p.classList.toggle("hidden");
+  if(!p.classList.contains("hidden")){
+    $("iakey").value=iaKey();$("iamode").value=iaMode();
+    $("iamodetag").textContent=iaMode()==="auto"?"auto":MODELES[iaMode()][1];
+    if(!iaKey())$("iaset").classList.remove("hidden");
+    iaRender();
+  }
+}
+function iaSettings(){$("iaset").classList.toggle("hidden")}
+function iaSaveSet(){
+  localStorage.setItem("rayoneo_ia_key",$("iakey").value.trim());
+  localStorage.setItem("rayoneo_ia_mode",$("iamode").value);
+  $("iamodetag").textContent=iaMode()==="auto"?"auto":MODELES[iaMode()][1];
+  $("iaset").classList.add("hidden");iaRender();
+}
+function iaRender(busy){
+  const b=$("iamsgs");
+  b.innerHTML=(CHAT.length?CHAT.map(m=>`<div class="iam ${m.role==="user"?"user":"bot"}">${esc(m.content)}${m.m?`<span class="mtag">${MODELES[m.m][1]}</span>`:""}</div>`).join(""):
+   `<div class="iam bot">Bonjour ! Je suis l'assistant de l'analyse de poste. Je connais l'audit en cours et je peux :\n• reformuler ou synthétiser vos observations du journal\n• proposer des adaptations et des pistes de financement\n• répondre aux questions accessibilité / éligibilité / OETH\n• préparer la restitution client\n\nEn mode automatique, je bascule sur le modèle Claude le plus adapté à chaque demande.</div>`)
+   +(busy?`<div class="iam bot">⏳ Claude réfléchit…</div>`:"");
+  b.scrollTop=b.scrollHeight;
+}
+async function iaSend(){
+  const ta=$("iaq");const q=ta.value.trim();if(!q||IA_BUSY)return;
+  if(!iaKey()){$("iaset").classList.remove("hidden");alert("Renseigne d'abord ta clé API Anthropic dans les réglages.");return}
+  CHAT.push({role:"user",content:q});ta.value="";IA_BUSY=true;iaRender(true);
+  const mk=choisirModele(q);
+  try{
+    const sys="Tu es l'assistant intégré de l'application Rayoneo Analyse de poste (audits de postes de travail pour un recrutement inclusif : accessibilité, exigences du poste, compatibilités par famille de handicap, financements Agefiph/FIPHFP, matching candidats). Tu aides l'auditeur, souvent sur le terrain et sur mobile : réponds en français, de façon concise, concrète et directement exploitable. Pas d'écriture inclusive. "+iaCtx();
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:MODELES[mk][0],max_tokens:1500,system:sys,
+        messages:CHAT.slice(-12).map(m=>({role:m.role,content:m.content}))})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||d.error.type||"erreur API");
+    CHAT.push({role:"assistant",content:(d.content||[]).map(c=>c.text||"").join("")||"(réponse vide)",m:mk});
+  }catch(e){
+    const msg=String(e.message||e);
+    CHAT.push({role:"assistant",content:"⚠️ "+(/x-api-key|authent|401/i.test(msg)?"Clé API invalide ou manquante — vérifie-la dans les réglages ⚙️.":/credit|billing|quota/i.test(msg)?"Crédits API épuisés — recharge sur console.anthropic.com.":/failed to fetch|network/i.test(msg)?"Pas de connexion internet.":"Erreur : "+msg),m:mk});
+  }
+  IA_BUSY=false;iaRender();
+}
+
+/* ---------- MISE EN SITUATION (DÉMO) ---------- */
+function chargerDemo(){
+  const a=nouvelAudit();
+  Object.assign(a.infos,{entreprise:"Atelier Lumen (démo)",secteur:"prive",effectif:"34",
+   adresse:"12 rue des Frères Lumière, 69600 Oullins-Pierre-Bénite",contact:"Nathalie Roche, DRH",
+   refHandicap:"",auditeur:"Cédric Barbiero — Rayoneo",dateAudit:new Date().toISOString().slice(0,10),
+   poste:"Opérateur de façonnage et finition",service:"Atelier production",contrat:"CDI",dateEmbauche:"2026-09-14"});
+  a.taches={
+   description:"Assurer les opérations de façonnage et de finition des produits imprimés (découpe, pliage, assemblage, conditionnement) au sein d'un atelier de 8 personnes, dans le respect des délais clients et des standards qualité.",
+   principales:"- Réglage et conduite du massicot et de la plieuse\n- Assemblage, encartage et mise sous film\n- Contrôle qualité visuel des produits finis\n- Conditionnement et préparation des expéditions\n- Entretien de premier niveau des machines",
+   exigences:"Pics d'activité en fin de semaine (délais clients). Binôme possible sur le façonnage. Port de charges ponctuel (bacs papier 8 à 12 kg). Environnement bruyant en production (76-80 dB près du massicot)."};
+  a.exig={note:"Le travail en binôme permet de réattribuer le port des charges les plus lourdes. La découpe massicot peut être regroupée sur deux créneaux par jour, libérant des plages plus calmes pour l'assemblage et le contrôle qualité.",
+   dims:{
+    mobilite:{niv:2,adapt:"oui",com:"Déplacements atelier/stock ; cheminements dégagés possibles"},
+    charges:{niv:2,adapt:"oui",com:"Bacs 8-12 kg réattribuables au binôme ou table élévatrice"},
+    debout:{niv:2,adapt:"partiel",com:"Assis-debout possible sur contrôle qualité et encartage"},
+    assise:{niv:1,adapt:"oui",com:""},
+    dexterite:{niv:3,adapt:"partiel",com:"Gestes fins requis sur l'encartage ; outils d'aide possibles"},
+    vision:{niv:2,adapt:"oui",com:"Contrôle qualité visuel ; loupe éclairante mobilisable"},
+    ecran:{niv:1,adapt:"oui",com:"GPAO simple, 15 min/jour"},
+    audition:{niv:1,adapt:"oui",com:"Consignes transposables à l'écrit ; signaux doublables en visuel"},
+    oral:{niv:1,adapt:"oui",com:""},
+    lecture:{niv:2,adapt:"oui",com:"Bons de fabrication ; version imagée possible"},
+    concentration:{niv:2,adapt:"oui",com:"Séries longues, interruptions limitées"},
+    memoire:{niv:2,adapt:"oui",com:"Procédures stables, affichables au poste"},
+    stress:{niv:2,adapt:"partiel",com:"Pics fin de semaine ; lissage possible par planification"},
+    social:{niv:2,adapt:"oui",com:"Équipe de 8, entraide réelle"},
+    autonomie:{niv:2,adapt:"oui",com:"Tutorat prévu les premiers mois"},
+    rythme:{niv:2,adapt:"partiel",com:"Cadence machine sur la plieuse uniquement"},
+    conduite:{niv:0,adapt:"oui",com:""}}};
+  a.grille={
+   acces_0:{n:"B",c:"Aucune place PMR ; parking gravillonné à 40 m de l'entrée"},
+   acces_1:{n:"A",c:"Cheminement extérieur en gravier, non roulant"},
+   acces_2:{n:"A",c:"Seuil de porte de 4 cm, porte lourde non automatisée"},
+   acces_3:{n:"C",c:"Accueil visible, signalétique correcte"},
+   acces_4:{n:"C",c:""},
+   acces_7:{n:"A",c:"Sanitaire adapté existant mais utilisé comme stockage"},
+   acces_8:{n:"C",c:"Salle de pause de plain-pied"},
+   poste_0:{n:"C",c:"Plan de travail à 90 cm, dégagement correct"},
+   poste_1:{n:"A",c:"Siège standard non réglable en profondeur d'assise"},
+   poste_4:{n:"A",c:"Massicot : commande bimanuelle haute, effort important"},
+   poste_5:{n:"A",c:"Bacs de sortie papier stockés au sol (8-12 kg)"},
+   poste_6:{n:"C",c:""},
+   envir_0:{n:"A",c:"Zone façonnage 76-80 dB en production ; pas d'isolement possible"},
+   envir_1:{n:"C",c:"Bon éclairage naturel + LED récentes"},
+   envir_4:{n:"A",c:"Aucun espace calme identifié"},
+   orga_0:{n:"C",c:"Horaires de journée, souplesse ±1 h acceptée"},
+   orga_2:{n:"C",c:"Pauses libres entre les séries"},
+   orga_3:{n:"N",c:"Sans objet sur ce poste"},
+   orga_5:{n:"A",c:"Cadence liée aux délais clients, pics le jeudi/vendredi"},
+   orga_6:{n:"C",c:"Planning hebdomadaire affiché le lundi"},
+   comm_0:{n:"A",c:"Consignes uniquement orales au lancement de série"},
+   comm_4:{n:"B",c:"Alarme incendie uniquement sonore, aucun flash lumineux"},
+   num_1:{n:"C",c:"GPAO avec zoom natif suffisant"},
+   secu_0:{n:"A",c:"Procédure d'évacuation générique, non individualisable en l'état"},
+   secu_1:{n:"A",c:"Espace d'attente sécurisé non identifié"},
+   secu_3:{n:"A",c:"Serre-files non sensibilisés aux besoins spécifiques"},
+   secu_5:{n:"A",c:"DUERP à jour mais sans volet handicap"},
+   coll_0:{n:"A",c:"Équipe volontaire mais jamais sensibilisée"},
+   coll_1:{n:"A",c:"Chef d'atelier partant, non formé à l'inclusion"},
+   coll_2:{n:"C",c:"Tuteur pressenti : conducteur numérique senior (12 ans d'ancienneté)"},
+   coll_5:{n:"A",c:"Pas de référent handicap (non obligatoire à 34 salariés, recommandé)"}};
+  a.synthese="Structure accueillante avec un vrai potentiel d'inclusion : équipe stable, tuteur naturel identifié, organisation souple. Deux bloquants à lever avant toute embauche : le stationnement/cheminement extérieur et l'alarme incendie exclusivement sonore. Le poste offre de réelles marges d'adaptation (binôme, réattribution des charges, regroupement des tâches bruyantes). Le budget prévisionnel détaillé figure dans le rapport ; après mobilisation des aides Agefiph, le reste à charge attendu est faible.";
+  a.journal=[
+   {id:"od1",date:a.infos.dateAudit,heure:"09:15",etape:"Massicot — découpe",notes:"Commande bimanuelle haute (1,45 m), effort d'appui important. L'opérateur actuel signale des douleurs d'épaule en fin de série. Regroupement possible sur 2 créneaux/jour.",p:[]},
+   {id:"od2",date:a.infos.dateAudit,heure:"11:30",etape:"Encartage — assemblage",notes:"Poste assis possible, gestes fins répétitifs. Bon éclairage naturel. Bruit modéré (plieuse voisine).",p:[]}];
+  cur=a;genererPrecos();genererPlan();
+  curSection="infos";render();window.scrollTo(0,0);
+}
+
+/* ---------- INIT (v2 matching · charte Magenta Rise) ---------- */
+loadAll();render();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
