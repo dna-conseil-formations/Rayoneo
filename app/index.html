@@ -196,12 +196,24 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
 <div id="padwrap" class="hidden">
   <div class="padbar">
     <b style="font-family:'Poppins'">✍️ Saisie au stylet</b>
-    <span class="hint" style="flex:1">Écrivez, puis « Transcrire » : l'IA convertit en texte dans le champ</span>
-    <button class="btn sec small" onclick="padClear()">🧽 Effacer</button>
-    <button class="btn sec small" onclick="padClose()">Annuler</button>
+    <span style="flex:1"></span>
+    <button class="btn sec small" onclick="padUndo()">↩ Trait</button>
+    <button class="btn sec small" onclick="padClear()">🧽 Tout</button>
+    <button class="btn sec small" onclick="padClose()">✕</button>
     <button class="btn small" id="padok" onclick="padValider()">✅ Transcrire</button>
   </div>
-  <canvas id="pad"></canvas>
+  <div id="padzone" style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <canvas id="pad"></canvas>
+  </div>
+  <div id="padresult" class="hidden" style="flex:1;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto">
+    <label class="f" style="margin:0">Texte reconnu — corrige si besoin, puis insère</label>
+    <textarea id="padtxt" style="flex:1;min-height:30vh;font-size:16px"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn small orange" onclick="padInsertBtn()">✅ Insérer dans le champ</button>
+      <button class="btn sec small" onclick="padBack()">✍️ Reprendre l'écriture</button>
+      <button class="btn sec small" onclick="padClose()">Annuler</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1058,68 +1070,108 @@ function buildRapport(){
   <div class="gradband"></div>`;
 }
 
-/* ---------- SAISIE STYLET + TRANSCRIPTION IA ---------- */
-const PAD={ctx:null,target:null,strokes:0,penSeen:false,drawing:false,init:false};
+/* ---------- SAISIE STYLET + TRANSCRIPTION IA (v2 : lissage, recadrage, relecture) ---------- */
+const PAD={ctx:null,target:null,strokes:[],cur:null,penSeen:false,init:false};
 function stylet(kind,id){
   if(!iaKey()){alert("La transcription manuscrite utilise l'IA : renseigne d'abord ta clé API dans l'assistant ✨ (réglages ⚙️).");return}
-  PAD.target={kind,id};PAD.strokes=0;PAD.penSeen=false;
+  PAD.target={kind,id};PAD.strokes=[];PAD.cur=null;PAD.penSeen=false;
+  $("padresult").classList.add("hidden");$("padzone").classList.remove("hidden");
   $("padwrap").classList.remove("hidden");
-  setTimeout(()=>{
-    const c=$("pad");const r=c.getBoundingClientRect();const dpr=window.devicePixelRatio||1;
-    c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);
-    const x=c.getContext("2d");x.scale(dpr,dpr);
-    x.fillStyle="#ffffff";x.fillRect(0,0,r.width,r.height);
-    x.lineCap="round";x.lineJoin="round";x.strokeStyle="#141414";
-    PAD.ctx=x;
-    if(!PAD.init){PAD.init=true;
-      c.addEventListener("pointerdown",e=>{
-        if(e.pointerType==="pen")PAD.penSeen=true;
-        if(PAD.penSeen&&e.pointerType==="touch")return; /* rejet de la paume */
-        PAD.drawing=true;PAD.ctx.beginPath();PAD.ctx.moveTo(e.offsetX,e.offsetY);
-        try{c.setPointerCapture(e.pointerId)}catch(_){}
-        e.preventDefault();
-      });
-      c.addEventListener("pointermove",e=>{
-        if(!PAD.drawing)return;
-        if(PAD.penSeen&&e.pointerType==="touch")return;
-        PAD.ctx.lineWidth=e.pointerType==="pen"?Math.max(1.6,(e.pressure||0.5)*5):3;
-        PAD.ctx.lineTo(e.offsetX,e.offsetY);PAD.ctx.stroke();PAD.strokes++;
-        e.preventDefault();
-      });
-      ["pointerup","pointercancel","pointerleave"].forEach(ev=>c.addEventListener(ev,()=>{PAD.drawing=false}));
-    }
-  },60);
+  setTimeout(padSize,60);
 }
-function padClear(){
+function padSize(){
+  const c=$("pad");const r=c.getBoundingClientRect();if(!r.width)return;
+  const dpr=window.devicePixelRatio||1;
+  c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);
+  const x=c.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);
+  x.lineCap="round";x.lineJoin="round";x.strokeStyle="#141414";
+  PAD.ctx=x;padRedraw();
+  if(!PAD.init){PAD.init=true;padBind(c);
+    window.addEventListener("resize",()=>{if(!$("padwrap").classList.contains("hidden")&&!$("padzone").classList.contains("hidden"))padSize()});}
+}
+function padSeg(ctx,p0,p1,p2,scale,dx,dy){
+  const s=scale||1,ox=dx||0,oy=dy||0;
+  ctx.lineWidth=(2.4+(p1.p||0.5)*2.4)*s;
+  ctx.beginPath();
+  ctx.moveTo(((p0.x+p1.x)/2-ox)*s,((p0.y+p1.y)/2-oy)*s);
+  ctx.quadraticCurveTo((p1.x-ox)*s,(p1.y-oy)*s,((p1.x+p2.x)/2-ox)*s,((p1.y+p2.y)/2-oy)*s);
+  ctx.stroke();
+}
+function padDrawFrom(ctx,s,from,scale,dx,dy){
+  const P=s.pts;
+  if(P.length===2&&from<=1){ctx.lineWidth=(2.4+(P[0].p||0.5)*2.4)*(scale||1);ctx.beginPath();ctx.moveTo((P[0].x-(dx||0))*(scale||1),(P[0].y-(dy||0))*(scale||1));ctx.lineTo((P[1].x-(dx||0))*(scale||1),(P[1].y-(dy||0))*(scale||1));ctx.stroke();return}
+  for(let i=Math.max(2,from);i<P.length;i++)padSeg(ctx,P[i-2],P[i-1],P[i],scale,dx,dy);
+}
+function padBind(c){
+  c.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="pen")PAD.penSeen=true;
+    if(PAD.penSeen&&e.pointerType==="touch")return; /* rejet de la paume */
+    PAD.cur={pts:[{x:e.offsetX,y:e.offsetY,p:e.pressure||0.5}],drawn:1};
+    try{c.setPointerCapture(e.pointerId)}catch(_){}
+    e.preventDefault();
+  },{passive:false});
+  c.addEventListener("pointermove",e=>{
+    if(!PAD.cur)return;
+    if(PAD.penSeen&&e.pointerType==="touch")return;
+    const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+    for(const ev of evs)PAD.cur.pts.push({x:ev.offsetX,y:ev.offsetY,p:ev.pressure||0.5});
+    padDrawFrom(PAD.ctx,PAD.cur,PAD.cur.drawn);PAD.cur.drawn=PAD.cur.pts.length;
+    e.preventDefault();
+  },{passive:false});
+  ["pointerup","pointercancel"].forEach(ev=>c.addEventListener(ev,()=>{
+    if(PAD.cur&&PAD.cur.pts.length>1)PAD.strokes.push(PAD.cur);
+    PAD.cur=null;
+  }));
+}
+function padRedraw(){
   const c=$("pad");const r=c.getBoundingClientRect();
-  PAD.ctx.fillStyle="#ffffff";PAD.ctx.fillRect(0,0,r.width,r.height);PAD.strokes=0;
+  PAD.ctx.fillStyle="#ffffff";PAD.ctx.fillRect(0,0,r.width,r.height);
+  PAD.strokes.forEach(s=>padDrawFrom(PAD.ctx,s,1));
 }
+function padUndo(){PAD.strokes.pop();padRedraw()}
+function padClear(){PAD.strokes=[];padRedraw()}
 function padClose(){$("padwrap").classList.add("hidden")}
-function padInsert(txt){
+function padBack(){$("padresult").classList.add("hidden");$("padzone").classList.remove("hidden");setTimeout(padSize,60)}
+function padExport(){
+  /* recadrage sur l'encre + redessin vectoriel net = OCR bien meilleur */
+  let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;
+  PAD.strokes.forEach(s=>s.pts.forEach(p=>{if(p.x<x1)x1=p.x;if(p.y<y1)y1=p.y;if(p.x>x2)x2=p.x;if(p.y>y2)y2=p.y}));
+  const M=26;x1-=M;y1-=M;x2+=M;y2+=M;
+  const cw=Math.max(60,x2-x1),ch=Math.max(60,y2-y1);
+  const scale=Math.min(2.5,Math.max(0.6,1300/cw));
+  const cv=document.createElement("canvas");
+  cv.width=Math.round(cw*scale);cv.height=Math.round(ch*scale);
+  const x=cv.getContext("2d");
+  x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);
+  x.lineCap="round";x.lineJoin="round";x.strokeStyle="#141414";
+  PAD.strokes.forEach(s=>padDrawFrom(x,s,1,scale,x1,y1));
+  return cv.toDataURL("image/png").split(",")[1];
+}
+function padInsertTxt(txt){
   const t=PAD.target;if(!t||!txt)return;
   if(t.kind==="j"){const o=cur.journal.find(x=>x.id===t.id);if(o)o.notes=((o.notes||"").trim()+" "+txt).trim()}
   else if(t.kind==="g"){cur.grille[t.id]=cur.grille[t.id]||{};cur.grille[t.id].c=((cur.grille[t.id].c||"").trim()+" "+txt).trim()}
   persist();render();
 }
+function padInsertBtn(){const txt=$("padtxt").value.trim();padClose();if(txt)padInsertTxt(txt)}
 async function padValider(){
-  if(PAD.strokes<3){alert("Écris d'abord quelque chose au stylet.");return}
+  if(!PAD.strokes.length){alert("Écris d'abord quelque chose au stylet.");return}
   const btn=$("padok");btn.disabled=true;btn.textContent="⏳ Transcription…";
   try{
-    const src=$("pad");const MAXW=1400;const sc=Math.min(1,MAXW/src.width);
-    const cv=document.createElement("canvas");cv.width=Math.round(src.width*sc);cv.height=Math.round(src.height*sc);
-    const x=cv.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);x.drawImage(src,0,0,cv.width,cv.height);
-    const b64=cv.toDataURL("image/jpeg",0.85).split(",")[1];
+    const b64=padExport();
     const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
       headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
       body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:900,
         messages:[{role:"user",content:[
-          {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},
-          {type:"text",text:"Transcris fidèlement ce texte manuscrit en français. Corrige uniquement l'orthographe évidente. Réponds avec le texte transcrit seul, sans aucun commentaire."}]}]})});
+          {type:"image",source:{type:"base64",media_type:"image/png",data:b64}},
+          {type:"text",text:"Ceci est une note manuscrite en français prise pendant un audit de poste de travail en entreprise (vocabulaire possible : ergonomie, production, accessibilité, sécurité, handicap, fromagerie/agroalimentaire). Transcris fidèlement le texte. Si un mot est vraiment illisible, écris [?]. Réponds uniquement avec le texte transcrit, sans commentaire."}]}]})});
     const d=await r.json();
     if(d.error)throw new Error(d.error.message||d.error.type);
     const txt=((d.content||[]).map(c=>c.text||"").join("")).trim();
     if(!txt)throw new Error("transcription vide");
-    padClose();padInsert(txt);
+    $("padzone").classList.add("hidden");
+    $("padresult").classList.remove("hidden");
+    $("padtxt").value=txt;
   }catch(e){alert("⚠️ Transcription impossible : "+(String(e.message||e).includes("x-api-key")?"clé API invalide.":e.message||e))}
   btn.disabled=false;btn.textContent="✅ Transcrire";
 }
