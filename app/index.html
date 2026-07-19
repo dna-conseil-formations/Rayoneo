@@ -124,6 +124,10 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
 .iam .mtag{display:block;font-size:10.5px;color:var(--gris);margin-top:6px}
 #iainput{display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--bord);background:#fff}
 #iainput textarea{flex:1;min-height:46px;max-height:120px}
+/* pavé d'écriture stylet */
+#padwrap{position:fixed;inset:0;z-index:95;background:#fff;display:flex;flex-direction:column}
+.padbar{display:flex;gap:8px;align-items:center;padding:10px 12px calc(10px + env(safe-area-inset-top)) 12px;border-bottom:1px solid var(--bord);flex-wrap:wrap;background:#fff}
+#pad{flex:1;touch-action:none;background:#fff;background-image:repeating-linear-gradient(#ffffff 0 52px,#ece6f4 52px 53px)}
 /* ---------- RAPPORT ---------- */
 #rapport{background:#fff;padding:20px;max-width:800px;margin:0 auto}
 #rapport h1{font-size:22px;color:var(--bleu2);margin-bottom:2px}
@@ -187,6 +191,17 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
     <textarea id="iaq" placeholder="Demande à Claude… (ex : reformule ma dernière observation, propose des adaptations pour ce poste)"></textarea>
     <button class="btn small" onclick="iaSend()" style="align-self:flex-end">➤</button>
   </div>
+</div>
+
+<div id="padwrap" class="hidden">
+  <div class="padbar">
+    <b style="font-family:'Poppins'">✍️ Saisie au stylet</b>
+    <span class="hint" style="flex:1">Écrivez, puis « Transcrire » : l'IA convertit en texte dans le champ</span>
+    <button class="btn sec small" onclick="padClear()">🧽 Effacer</button>
+    <button class="btn sec small" onclick="padClose()">Annuler</button>
+    <button class="btn small" id="padok" onclick="padValider()">✅ Transcrire</button>
+  </div>
+  <canvas id="pad"></canvas>
 </div>
 
 <script>
@@ -649,6 +664,7 @@ function renderJournal(m){
       <textarea oninput="updObs('${o.id}','notes',this.value)">${esc(o.notes)}</textarea>
       <div class="photo-row">
         <button class="micbtn" onclick="dicter('${o.id}',this)">🎤</button>
+        <button class="micbtn" onclick="stylet('j','${o.id}')" title="Saisie au stylet">✍️</button>
         ${(o.p||[]).map((p,ix)=>`<span style="position:relative"><img src="${p}"><button onclick="delObsPhoto('${o.id}',${ix})" style="position:absolute;top:-6px;right:-6px;border:none;background:var(--rouge);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px">✕</button></span>`).join("")}
         <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
         <input type="file" accept="image/*" capture="environment" class="hidden" onchange="obsPhoto('${o.id}',this)">
@@ -722,6 +738,7 @@ function renderGrille(m){
         <textarea placeholder="Observation…" oninput="setCom('${iid}',this.value)">${esc(g.c||"")}</textarea>
         <div class="photo-row">
           ${(g.p||[]).map((p,ix)=>`<span style="position:relative"><img src="${p}"><button onclick="delPhoto('${iid}',${ix})" style="position:absolute;top:-6px;right:-6px;border:none;background:var(--rouge);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px">✕</button></span>`).join("")}
+          <button class="micbtn" onclick="stylet('g','${iid}')" title="Saisie au stylet">✍️</button>
           <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
           <input type="file" accept="image/*" capture="environment" class="hidden" onchange="addPhoto('${iid}',this)">
         </div>
@@ -1039,6 +1056,72 @@ function buildRapport(){
   <div class="sign"><div>Pour l'employeur — nom, date, signature</div><div>Pour Rayoneo / DNA Conseil et formations — nom, date, signature</div></div>
   <p style="font-size:11px;color:var(--gris);margin-top:14px">Rapport généré le ${new Date().toLocaleDateString("fr-FR")} avec l'application Rayoneo Analyse de poste. Document confidentiel — diffusion restreinte aux parties prenantes du projet de recrutement.</p>
   <div class="gradband"></div>`;
+}
+
+/* ---------- SAISIE STYLET + TRANSCRIPTION IA ---------- */
+const PAD={ctx:null,target:null,strokes:0,penSeen:false,drawing:false,init:false};
+function stylet(kind,id){
+  if(!iaKey()){alert("La transcription manuscrite utilise l'IA : renseigne d'abord ta clé API dans l'assistant ✨ (réglages ⚙️).");return}
+  PAD.target={kind,id};PAD.strokes=0;PAD.penSeen=false;
+  $("padwrap").classList.remove("hidden");
+  setTimeout(()=>{
+    const c=$("pad");const r=c.getBoundingClientRect();const dpr=window.devicePixelRatio||1;
+    c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);
+    const x=c.getContext("2d");x.scale(dpr,dpr);
+    x.fillStyle="#ffffff";x.fillRect(0,0,r.width,r.height);
+    x.lineCap="round";x.lineJoin="round";x.strokeStyle="#141414";
+    PAD.ctx=x;
+    if(!PAD.init){PAD.init=true;
+      c.addEventListener("pointerdown",e=>{
+        if(e.pointerType==="pen")PAD.penSeen=true;
+        if(PAD.penSeen&&e.pointerType==="touch")return; /* rejet de la paume */
+        PAD.drawing=true;PAD.ctx.beginPath();PAD.ctx.moveTo(e.offsetX,e.offsetY);
+        try{c.setPointerCapture(e.pointerId)}catch(_){}
+        e.preventDefault();
+      });
+      c.addEventListener("pointermove",e=>{
+        if(!PAD.drawing)return;
+        if(PAD.penSeen&&e.pointerType==="touch")return;
+        PAD.ctx.lineWidth=e.pointerType==="pen"?Math.max(1.6,(e.pressure||0.5)*5):3;
+        PAD.ctx.lineTo(e.offsetX,e.offsetY);PAD.ctx.stroke();PAD.strokes++;
+        e.preventDefault();
+      });
+      ["pointerup","pointercancel","pointerleave"].forEach(ev=>c.addEventListener(ev,()=>{PAD.drawing=false}));
+    }
+  },60);
+}
+function padClear(){
+  const c=$("pad");const r=c.getBoundingClientRect();
+  PAD.ctx.fillStyle="#ffffff";PAD.ctx.fillRect(0,0,r.width,r.height);PAD.strokes=0;
+}
+function padClose(){$("padwrap").classList.add("hidden")}
+function padInsert(txt){
+  const t=PAD.target;if(!t||!txt)return;
+  if(t.kind==="j"){const o=cur.journal.find(x=>x.id===t.id);if(o)o.notes=((o.notes||"").trim()+" "+txt).trim()}
+  else if(t.kind==="g"){cur.grille[t.id]=cur.grille[t.id]||{};cur.grille[t.id].c=((cur.grille[t.id].c||"").trim()+" "+txt).trim()}
+  persist();render();
+}
+async function padValider(){
+  if(PAD.strokes<3){alert("Écris d'abord quelque chose au stylet.");return}
+  const btn=$("padok");btn.disabled=true;btn.textContent="⏳ Transcription…";
+  try{
+    const src=$("pad");const MAXW=1400;const sc=Math.min(1,MAXW/src.width);
+    const cv=document.createElement("canvas");cv.width=Math.round(src.width*sc);cv.height=Math.round(src.height*sc);
+    const x=cv.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);x.drawImage(src,0,0,cv.width,cv.height);
+    const b64=cv.toDataURL("image/jpeg",0.85).split(",")[1];
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:900,
+        messages:[{role:"user",content:[
+          {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},
+          {type:"text",text:"Transcris fidèlement ce texte manuscrit en français. Corrige uniquement l'orthographe évidente. Réponds avec le texte transcrit seul, sans aucun commentaire."}]}]})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||d.error.type);
+    const txt=((d.content||[]).map(c=>c.text||"").join("")).trim();
+    if(!txt)throw new Error("transcription vide");
+    padClose();padInsert(txt);
+  }catch(e){alert("⚠️ Transcription impossible : "+(String(e.message||e).includes("x-api-key")?"clé API invalide.":e.message||e))}
+  btn.disabled=false;btn.textContent="✅ Transcrire";
 }
 
 /* ---------- ASSISTANT CLAUDE INTÉGRÉ ---------- */
