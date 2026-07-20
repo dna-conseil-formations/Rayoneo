@@ -1117,19 +1117,36 @@ const bakOn=()=>localStorage.getItem("rayoneo_bak_on")!=="0";
 function bakToggle(){localStorage.setItem("rayoneo_bak_on",bakOn()?"0":"1");if(!cur)render()}
 function bakStamp(){const d=new Date();return d.toISOString().slice(0,10)+"-"+d.toTimeString().slice(0,5).replace(":","h")}
 function doBackup(){
-  if(!AUDITS.length)return;
-  const blob=new Blob([JSON.stringify(AUDITS,null,1)],{type:"application/json"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download="rayoneo-sauvegarde-"+bakStamp()+".json";a.click();
-  URL.revokeObjectURL(a.href);
-  BAK_DIRTY=false;localStorage.setItem("rayoneo_bak_last",String(Date.now()));
+  if(!AUDITS.length)return false;
+  try{
+    const blob=new Blob([JSON.stringify(AUDITS,null,1)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;
+    a.download="rayoneo-sauvegarde-"+bakStamp()+".json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    BAK_DIRTY=false;localStorage.setItem("rayoneo_bak_last",String(Date.now()));
+    return true;
+  }catch(e){return false}
 }
 async function partagerBackup(){
+  if(!AUDITS.length){alert("Aucun audit à sauvegarder pour le moment.");return}
   const data=JSON.stringify(AUDITS,null,1);
-  const f=new File([data],"rayoneo-sauvegarde-"+bakStamp()+".json",{type:"application/json"});
-  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){
-    try{await navigator.share({files:[f],title:"Sauvegarde Rayoneo"})}catch(_){}
-  }else doBackup();
+  const fname="rayoneo-sauvegarde-"+bakStamp()+".json";
+  /* 1) Partage natif de fichier (Android/Chrome récents) */
+  try{
+    const f=new File([data],fname,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){
+      await navigator.share({files:[f],title:"Sauvegarde Rayoneo",text:"Sauvegarde de l'analyse de poste"});
+      BAK_DIRTY=false;localStorage.setItem("rayoneo_bak_last",String(Date.now()));
+      return;
+    }
+  }catch(e){ if(e&&e.name==="AbortError")return; } /* l'utilisateur a fermé la fenêtre de partage : ne pas insister */
+  /* 2) Téléchargement classique */
+  if(doBackup()){alert("Sauvegarde enregistrée dans les Téléchargements ("+fname+"). Vous pouvez l'envoyer vers Drive ou par mail depuis le gestionnaire de fichiers.");return}
+  /* 3) Dernier recours : presse-papier */
+  try{await navigator.clipboard.writeText(data);alert("Le partage direct n'est pas disponible sur cet appareil : la sauvegarde a été copiée dans le presse-papier. Collez-la dans un mail ou une note, ou utilisez « Exporter tous les audits ».")}
+  catch(e){alert("Le partage automatique a échoué. Utilisez le bouton « Exporter tous les audits » de la section Données juste en dessous.")}
 }
 function bakLastLabel(){const t=+localStorage.getItem("rayoneo_bak_last");return t?new Date(t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"jamais"}
 
