@@ -1198,6 +1198,14 @@ function chronoRefresh(){
 function chronoStopSilent(){if(CHRONO.run&&cur){cur.temps.push({d:new Date(CHRONO.start).toISOString(),f:new Date().toISOString()});persist()}CHRONO.run=false}
 
 /* ---------- REFORMULATION 1 CLIC PAR CLAUDE ---------- */
+function nettoyerMd(t){
+  return t
+    .replace(/\*\*(.*?)\*\*/g,"$1")      /* **gras** → texte */
+    .replace(/^\s*[\*•]\s+/gm,"- ")      /* puces * → tirets */
+    .replace(/^#+\s*/gm,"")              /* titres markdown */
+    .replace(/\*/g,"")                   /* astérisques restants */
+    .trim();
+}
 async function reformuler(kind,id,btn){
   if(!iaKey()){alert("Renseigne d'abord ta clé API (bouton 🔑 sur l'accueil).");iaOpenSettings();return}
   let txt="";
@@ -1210,10 +1218,10 @@ async function reformuler(kind,id,btn){
     const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
       headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
       body:JSON.stringify({model:MODELES.haiku[0],max_tokens:1000,
-        messages:[{role:"user",content:"Reformule ces notes prises sur le terrain lors d'un audit de poste de travail, en français professionnel, clair et concis. Conserve rigoureusement toutes les informations factuelles (mesures, chiffres, noms, constats). Pas d'écriture inclusive. Réponds uniquement avec le texte reformulé.\n\nNotes : "+txt}]})});
+        messages:[{role:"user",content:"Reformule ces notes prises sur le terrain lors d'un audit de poste de travail, en français professionnel, clair et concis. Conserve rigoureusement toutes les informations factuelles (mesures, chiffres, noms, constats). Pas d'écriture inclusive. IMPORTANT : réponds en TEXTE BRUT uniquement — aucune mise en forme Markdown, aucun astérisque, aucun gras, pas de titres ; si une liste est utile, utilise des tirets simples. Réponds uniquement avec le texte reformulé.\n\nNotes : "+txt}]})});
     const d=await r.json();
     if(d.error)throw new Error(d.error.message||d.error.type);
-    const nv=((d.content||[]).map(c=>c.text||"").join("")).trim();
+    const nv=nettoyerMd(((d.content||[]).map(c=>c.text||"").join("")));
     if(!nv)throw new Error("réponse vide");
     if(kind==="j"){const o=cur.journal.find(x=>x.id===id);if(o)o.notes=nv}
     else if(kind==="g"){cur.grille[id].c=nv}
