@@ -1218,8 +1218,22 @@ async function syncNow(btn){
     const url="https://api.github.com/repos/"+SYNC_REPO+"/contents/audits.json";
     let sha=null,remote=[];
     const g=await fetch(url,{headers:H});
-    if(g.status===200){const d=await g.json();sha=d.sha;
-      try{remote=JSON.parse(utf8b64(d.content))||[]}catch(_){remote=[]}}
+    if(g.status===200){
+      const d=await g.json();sha=d.sha;
+      let txt=null;
+      if(d.content&&d.encoding==="base64")txt=utf8b64(d.content);
+      else{
+        /* fichier > 1 Mo : l'API ne renvoie pas le contenu en JSON, il faut le demander en brut */
+        const raw=await fetch(url,{headers:{"Authorization":"Bearer "+tk,"Accept":"application/vnd.github.raw"}});
+        if(raw.ok)txt=await raw.text();
+      }
+      if(txt!==null&&txt!==""){
+        try{remote=JSON.parse(txt)||[]}
+        catch(_){throw new Error("données du cloud illisibles — synchronisation ANNULÉE par sécurité, rien n'a été écrasé")}
+      }else if(d.size>2){
+        throw new Error("impossible de lire les données du cloud — synchronisation ANNULÉE par sécurité, rien n'a été écrasé");
+      }
+    }
     else if(g.status===401)throw new Error("jeton invalide ou expiré — recrée-le sur github.com");
     else if(g.status===403)throw new Error("jeton sans accès au dépôt "+SYNC_REPO+" (vérifie Repository access et la permission Contents)");
     else if(g.status!==404)throw new Error("lecture impossible (HTTP "+g.status+")");
