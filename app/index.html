@@ -530,6 +530,17 @@ function renderHome(){
     4. Une fois le candidat retenu, le <b>plan d'action</b> déroule l'agenda jusqu'à l'embauche et au-delà.</p>
   </div>
   <div class="card">
+    <h2>☁️ Synchronisation PC ↔ tablette</h2>
+    <p class="hint">${syncTok()?"Configurée ✓":"Non configurée"} — pousse et récupère tous les audits via ton dépôt GitHub privé (fusion automatique : la version la plus récente de chaque audit gagne). Dernière synchro : <b>${syncLastLabel()}</b>.</p>
+    <button class="btn ${syncTok()?"orange":"sec"}" onclick="syncNow(this)">☁️ Synchroniser maintenant</button>
+    <details style="margin-top:10px"><summary style="font-size:13.5px;color:var(--bleu2);font-weight:600">⚙️ Configurer la synchronisation (jeton GitHub)</summary>
+      <label class="f">Jeton d'accès GitHub (limité au dépôt privé rayoneo-donnees)</label>
+      <input type="password" id="synctok" placeholder="github_pat_…" autocomplete="off" value="${esc(syncTok())}">
+      <button class="btn small" onclick="syncSaveTok()" style="margin-top:8px">Enregistrer le jeton</button>
+      <p class="hint">Création (une fois, puis colle le même jeton sur le PC ET la tablette) : github.com → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token → Repository access : <b>Only select repositories → rayoneo-donnees</b> → Permissions : <b>Contents = Read and write</b> → expiration 1 an. Le jeton ne donne accès qu'à ce seul dépôt de données.</p>
+    </details>
+  </div>
+  <div class="card">
     <h2>🛟 Sauvegarde automatique</h2>
     <p class="hint">${bakOn()?"Active ✓":"Désactivée ⚠️"} — Deux niveaux : <b>instantanés internes</b> toutes les 10 min (invisibles, purge automatique, ${SNAP_MAX} conservés) et <b>fichier JSON</b> dans les Téléchargements au maximum toutes les 2 h + à la sortie de l'app. Dernier fichier : <b>${bakLastLabel()}</b>.</p>
     <button class="btn ${bakOn()?"sec":"orange"}" onclick="bakToggle()">${bakOn()?"Désactiver":"Activer"} la sauvegarde auto</button>
@@ -1189,6 +1200,46 @@ async function snapShowList(){
   const box=$("snaplist");if(!box)return;
   box.innerHTML=l.length?l.map(s=>`<div class="audit-li" onclick="snapRestore('${s.n}')"><div class="ic">🕘</div><div style="flex:1"><div class="tt">${new Date(s.t).toLocaleString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div><div class="st">${Math.round(s.size/1024)} Ko — toucher pour restaurer (fusion, le plus récent gagne)</div></div></div>`).join("")
    :"<p class='hint'>Aucun instantané interne pour le moment.</p>";
+}
+
+/* ---------- SYNCHRONISATION PC ↔ TABLETTE (dépôt GitHub privé) ---------- */
+const SYNC_REPO="cedricbarbiero/rayoneo-donnees";
+const syncTok=()=>localStorage.getItem("rayoneo_sync_tok")||"";
+function syncLastLabel(){const t=+localStorage.getItem("rayoneo_sync_last");return t?new Date(t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"jamais"}
+function syncSaveTok(){localStorage.setItem("rayoneo_sync_tok",$("synctok").value.trim());render()}
+const b64utf8=s=>btoa(unescape(encodeURIComponent(s)));
+const utf8b64=s=>decodeURIComponent(escape(atob(String(s).replace(/\n/g,""))));
+async function syncNow(btn){
+  const tk=syncTok();
+  if(!tk){alert("Configure d'abord le jeton GitHub dans « ⚙️ Configurer la synchronisation » juste en dessous.");return}
+  const old=btn?btn.textContent:"";if(btn){btn.disabled=true;btn.textContent="⏳ Synchronisation…"}
+  try{
+    const H={"Authorization":"Bearer "+tk,"Accept":"application/vnd.github+json"};
+    const url="https://api.github.com/repos/"+SYNC_REPO+"/contents/audits.json";
+    let sha=null,remote=[];
+    const g=await fetch(url,{headers:H});
+    if(g.status===200){const d=await g.json();sha=d.sha;
+      try{remote=JSON.parse(utf8b64(d.content))||[]}catch(_){remote=[]}}
+    else if(g.status===401)throw new Error("jeton invalide ou expiré — recrée-le sur github.com");
+    else if(g.status===403)throw new Error("jeton sans accès au dépôt "+SYNC_REPO+" (vérifie Repository access et la permission Contents)");
+    else if(g.status!==404)throw new Error("lecture impossible (HTTP "+g.status+")");
+    /* fusion : la version la plus récente de chaque audit gagne */
+    let recus=0;
+    remote.forEach(a=>{const i=AUDITS.findIndex(x=>x.id===a.id);
+      if(i<0){AUDITS.push(migrate(a));recus++}
+      else if((a.maj||0)>(AUDITS[i].maj||0)){AUDITS[i]=migrate(a);recus++}});
+    saveAll();
+    const body={message:"sync "+new Date().toISOString(),content:b64utf8(JSON.stringify(AUDITS))};
+    if(sha)body.sha=sha;
+    const p=await fetch(url,{method:"PUT",headers:{...H,"content-type":"application/json"},body:JSON.stringify(body)});
+    if(!p.ok){const e=await p.json().catch(()=>({}));throw new Error(e.message||"envoi refusé (HTTP "+p.status+")")}
+    localStorage.setItem("rayoneo_sync_last",String(Date.now()));
+    BAK_DIRTY=false;
+    render();
+    alert("✅ Synchronisation réussie : "+recus+" audit(s) reçu(s) ou mis à jour, "+AUDITS.length+" audit(s) au total désormais alignés entre tes appareils.");
+    return;
+  }catch(e){alert("⚠️ Synchronisation impossible : "+(e.message||e))}
+  if(btn){btn.disabled=false;btn.textContent=old}
 }
 
 /* ---------- CHRONOMÈTRE D'ANALYSE ---------- */
