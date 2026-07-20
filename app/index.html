@@ -1223,13 +1223,14 @@ async function syncNow(btn){
       let txt=null;
       if(d.content&&d.encoding==="base64")txt=utf8b64(d.content);
       else{
-        /* fichier > 1 Mo : l'API ne renvoie pas le contenu en JSON, il faut le demander en brut */
-        const raw=await fetch(url,{headers:{"Authorization":"Bearer "+tk,"Accept":"application/vnd.github.raw"}});
-        if(raw.ok)txt=await raw.text();
+        /* fichier > 1 Mo : passer par l'API blob (fiable jusqu'à 100 Mo) */
+        const bl=await fetch("https://api.github.com/repos/"+SYNC_REPO+"/git/blobs/"+d.sha,{headers:H});
+        if(bl.ok){const bd=await bl.json();if(bd.content&&bd.encoding==="base64")txt=utf8b64(bd.content)}
       }
       if(txt!==null&&txt!==""){
-        try{remote=JSON.parse(txt)||[]}
+        try{remote=JSON.parse(txt)}
         catch(_){throw new Error("données du cloud illisibles — synchronisation ANNULÉE par sécurité, rien n'a été écrasé")}
+        if(!Array.isArray(remote))throw new Error("format du cloud inattendu — synchronisation ANNULÉE par sécurité, rien n'a été écrasé");
       }else if(d.size>2){
         throw new Error("impossible de lire les données du cloud — synchronisation ANNULÉE par sécurité, rien n'a été écrasé");
       }
