@@ -156,7 +156,8 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
   <img src="https://dna-conseil-formations.github.io/Rayoneo/logo-rayoneo.png" alt="" style="height:38px;width:auto" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
   <div class="logo" style="display:none">R</div>
   <div><h1>Analyse de poste<small>Rayoneo · DNA Conseil et formations</small></h1></div>
-  <button class="hbtn" id="btnHome" onclick="goHome()">Accueil</button>
+  <button class="hbtn" id="chronobtn" onclick="chronoToggle()" style="margin-left:auto;display:none">▶ Chrono</button>
+  <button class="hbtn" id="btnHome" onclick="goHome()" style="margin-left:8px">Accueil</button>
 </header>
 
 <div id="app"><main id="main"></main></div>
@@ -196,6 +197,7 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
 <div id="padwrap" class="hidden">
   <div class="padbar">
     <b style="font-family:'Poppins'">✍️ Saisie au stylet</b>
+    <button class="btn sec small" id="padmode" onclick="padMode()">✍️ Stylet seul</button>
     <span style="flex:1"></span>
     <button class="btn sec small" onclick="padUndo()">↩ Trait</button>
     <button class="btn sec small" onclick="padClear()">🧽 Tout</button>
@@ -448,6 +450,7 @@ function migrate(a){
   if(!a.exig.dims)a.exig.dims={};
   if(a.infos&&a.infos.siren===undefined)Object.assign(a.infos,{siren:"",naf:"",catju:"",tranche:"",ea:"non"});
   if(!a.journal)a.journal=[];
+  if(!a.temps)a.temps=[];
   (a.precos||[]).forEach(p=>{if(p.cmin===undefined){p.cmin=0;p.cmax=0}});
   delete a.cand;
   return a;
@@ -457,13 +460,13 @@ function saveAll(){
   try{localStorage.setItem("rayoneo_audits",JSON.stringify(AUDITS))}
   catch(e){alert("Mémoire pleine : supprimez des photos ou exportez puis supprimez d'anciens audits.")}
 }
-function persist(){if(cur){cur.maj=Date.now();saveAll()}}
+function persist(){if(cur){cur.maj=Date.now();saveAll();BAK_DIRTY=true}}
 function nouvelAudit(){
   const a={id:"a"+Date.now(),cree:Date.now(),maj:Date.now(),
    infos:{entreprise:"",secteur:"prive",effectif:"",adresse:"",contact:"",refHandicap:"",auditeur:"",dateAudit:new Date().toISOString().slice(0,10),poste:"",service:"",contrat:"CDI",dateEmbauche:"",siren:"",naf:"",catju:"",tranche:"",ea:"non"},
    taches:{description:"",principales:"",exigences:""},
    exig:{dims:{},note:""},
-   journal:[],
+   journal:[],temps:[],
    grille:{},precos:[],plan:[],synthese:""};
   AUDITS.unshift(a);saveAll();return a;
 }
@@ -483,8 +486,8 @@ const LABELS={infos:"1. Contexte",taches:"2. Poste",journal:"3. Journal",exig:"4
 function render(){
   $("rapport").classList.add("hidden");$("app").classList.remove("hidden");
   const fb=$("fbar");
-  if(!cur){renderHome();fb.classList.add("hidden");$("btnHome").style.visibility="hidden";return}
-  $("btnHome").style.visibility="visible";
+  if(!cur){renderHome();fb.classList.add("hidden");$("btnHome").style.visibility="hidden";chronoRefresh();return}
+  $("btnHome").style.visibility="visible";chronoRefresh();
   renderNav();
   const m=$("main");
   ({infos:renderInfos,taches:renderTaches,journal:renderJournal,exig:renderExig,grille:renderGrille,precos:renderPrecos,match:renderMatch,plan:renderPlan,rapport:renderRapportMenu}[curSection]||renderInfos)(m);
@@ -527,11 +530,30 @@ function renderHome(){
     4. Une fois le candidat retenu, le <b>plan d'action</b> déroule l'agenda jusqu'à l'embauche et au-delà.</p>
   </div>
   <div class="card">
+    <h2>🛟 Sauvegarde automatique</h2>
+    <p class="hint">${bakOn()?"Active ✓":"Désactivée ⚠️"} — Deux niveaux : <b>instantanés internes</b> toutes les 10 min (invisibles, purge automatique, ${SNAP_MAX} conservés) et <b>fichier JSON</b> dans les Téléchargements au maximum toutes les 2 h + à la sortie de l'app. Dernier fichier : <b>${bakLastLabel()}</b>.</p>
+    <button class="btn ${bakOn()?"sec":"orange"}" onclick="bakToggle()">${bakOn()?"Désactiver":"Activer"} la sauvegarde auto</button>
+    <button class="btn teal" onclick="partagerBackup()">📤 Sauvegarder / partager maintenant (Drive, mail…)</button>
+    <details style="margin-top:10px" ontoggle="if(this.open)snapShowList()"><summary style="font-size:13.5px;color:var(--bleu2);font-weight:600">🕘 Restaurer un instantané interne</summary>
+      <div id="snaplist"><p class="hint">Chargement…</p></div>
+    </details>
+    <p class="hint" style="margin-top:8px">Les fichiers des Téléchargements ne peuvent pas être supprimés par l'application (règle Android) : leur cadence est donc réduite au minimum. Un petit ménage manuel de temps en temps suffit — ils sont tous nommés « rayoneo-sauvegarde-… ».</p>
+  </div>
+  <div class="card">
+    <h2>🤖 Assistant IA & transcription manuscrite</h2>
+    <p class="hint">${iaKey()?"Clé API configurée ✓ — l'assistant ✨ (bouton en bas à droite) et la transcription au stylet sont actifs.":"Aucune clé API configurée : l'assistant ✨ et la transcription du stylet en ont besoin."}</p>
+    <button class="btn ${iaKey()?"sec":"orange"}" onclick="iaOpenSettings()">🔑 ${iaKey()?"Modifier la clé API / le modèle":"Configurer la clé API"}</button>
+  </div>
+  <div class="card">
     <h2>💾 Données</h2>
     <button class="btn sec" onclick="exportJSON()">Exporter tous les audits (fichier JSON)</button>
     <button class="btn sec" onclick="$('impF').click()">Importer un fichier JSON</button>
     <input type="file" id="impF" accept=".json" class="hidden" onchange="importJSON(this)">
     <p class="hint">Les données restent sur cet appareil. Exportez régulièrement pour sauvegarder.</p>
+  </div>
+  <div class="card">
+    <h2>💻 Travailler depuis le PC</h2>
+    <p style="font-size:13.5px">La même application fonctionne sur ordinateur : <b>dna-conseil-formations.github.io/Rayoneo/app/</b>. Pour reprendre un audit commencé sur tablette : sur la tablette, « 📤 Sauvegarder / partager » (ou récupérer le fichier de sauvegarde auto dans Téléchargements) → transférer le JSON au PC → « Importer un fichier JSON ». L'import garde toujours la version la plus récente de chaque audit. Faire le chemin inverse pour repartir sur le terrain.</p>
   </div>
   <div class="card">
     <h2>ℹ️ Installer l'application</h2>
@@ -546,7 +568,13 @@ function exportJSON(){
 function importJSON(inp){
   const f=inp.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;
-    d.forEach(a=>{if(!AUDITS.find(x=>x.id===a.id))AUDITS.push(migrate(a))});saveAll();render();alert("Import réussi.")}
+    let nv=0,maj=0,ig=0;
+    d.forEach(a=>{const i=AUDITS.findIndex(x=>x.id===a.id);
+      if(i<0){AUDITS.push(migrate(a));nv++}
+      else if((a.maj||0)>(AUDITS[i].maj||0)){AUDITS[i]=migrate(a);maj++}
+      else ig++;});
+    saveAll();render();
+    alert("Import : "+nv+" nouvel(s) audit(s), "+maj+" mis à jour, "+ig+" déjà à jour (version locale plus récente conservée).")}
     catch(e){alert("Fichier invalide.")}};
   r.readAsText(f);
 }
@@ -645,15 +673,24 @@ let REC=null;
 function dicter(id,btn){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){alert("La dictée vocale n'est pas disponible sur ce navigateur.");return}
-  if(REC){REC.stop();return}
-  const r=new SR();REC=r;r.lang="fr-FR";r.interimResults=false;r.continuous=true;
+  if(REC){REC.manual=true;try{REC.stop()}catch(_){ }return} /* arrêt MANUEL uniquement */
+  const r=new SR();REC=r;r.manual=false;r.lang="fr-FR";r.interimResults=false;r.continuous=true;
+  const debut=Date.now();
   btn.classList.add("rec");btn.textContent="⏹";
   r.onresult=e=>{let t="";
     for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)t+=e.results[i][0].transcript+" ";
     if(t){const o=cur.journal.find(x=>x.id===id);if(o){o.notes=(o.notes?o.notes.trim()+" ":"")+t.trim();persist();
       const ta=btn.closest(".jour-entry").querySelector("textarea");if(ta)ta.value=o.notes}}};
-  const fin=()=>{btn.classList.remove("rec");btn.textContent="🎤";REC=null};
-  r.onend=fin;r.onerror=fin;
+  r.onerror=()=>{}; /* les coupures silencieuses passent par onend */
+  r.onend=()=>{
+    /* Android coupe la reconnaissance après quelques secondes de silence :
+       on relance automatiquement tant que l'arrêt n'est pas manuel, avec garde-fou 10 min */
+    if(!r.manual&&Date.now()-debut<10*60*1000){try{r.start();return}catch(_){}}
+    clearTimeout(r.garde);
+    btn.classList.remove("rec");btn.textContent="🎤";REC=null;
+    if(!r.manual)alert("⏱ Dictée coupée automatiquement après 10 minutes (garde-fou).");
+  };
+  r.garde=setTimeout(()=>{r.manual=false;try{r.stop()}catch(_){}} ,10*60*1000+2000);
   r.start();
 }
 function renderJournal(m){
@@ -677,6 +714,7 @@ function renderJournal(m){
       <div class="photo-row">
         <button class="micbtn" onclick="dicter('${o.id}',this)">🎤</button>
         <button class="micbtn" onclick="stylet('j','${o.id}')" title="Saisie au stylet">✍️</button>
+        <button class="micbtn" onclick="reformuler('j','${o.id}',this)" title="Reformuler par Claude">✨</button>
         ${(o.p||[]).map((p,ix)=>`<span style="position:relative"><img src="${p}"><button onclick="delObsPhoto('${o.id}',${ix})" style="position:absolute;top:-6px;right:-6px;border:none;background:var(--rouge);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px">✕</button></span>`).join("")}
         <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
         <input type="file" accept="image/*" capture="environment" class="hidden" onchange="obsPhoto('${o.id}',this)">
@@ -751,12 +789,14 @@ function renderGrille(m){
         <div class="photo-row">
           ${(g.p||[]).map((p,ix)=>`<span style="position:relative"><img src="${p}"><button onclick="delPhoto('${iid}',${ix})" style="position:absolute;top:-6px;right:-6px;border:none;background:var(--rouge);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px">✕</button></span>`).join("")}
           <button class="micbtn" onclick="stylet('g','${iid}')" title="Saisie au stylet">✍️</button>
+          <button class="micbtn" onclick="reformuler('g','${iid}',this)" title="Reformuler par Claude">✨</button>
           <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
           <input type="file" accept="image/*" capture="environment" class="hidden" onchange="addPhoto('${iid}',this)">
         </div>
       </div>`}).join("")}
   </div>`).join("")}
-  <div class="card">${TA("synthese","Synthèse libre de l'auditeur","Impression générale, points de vigilance, atouts de la structure…")}</div>`;
+  <div class="card">${TA("synthese","Synthèse libre de l'auditeur","Impression générale, points de vigilance, atouts de la structure…")}
+  <button class="btn sec small" style="margin-top:8px" onclick="reformuler('s',null,this)">✨ Reformuler la synthèse par Claude</button></div>`;
 }
 
 /* ---------- 5. PRÉCONISATIONS ---------- */
@@ -994,6 +1034,7 @@ function buildRapport(){
     ${a.infos.siren?`<tr><th>SIREN / NAF</th><td>${esc(a.infos.siren)}${a.infos.naf?" · NAF "+esc(a.infos.naf):""} <span style="color:var(--gris);font-size:11px">(source : annuaire officiel INSEE/RNE)</span></td></tr>`:""}
     <tr><th>Poste analysé</th><td>${esc(a.infos.poste)||"—"} — ${esc(a.infos.service)||""} (${esc(a.infos.contrat)})</td></tr>
     <tr><th>Date de l'audit</th><td>${fmtD(a.infos.dateAudit)}</td></tr>
+    ${(a.temps||[]).length?`<tr><th>Temps d'analyse</th><td><b>${fmtMin(tempsTotalMin(a))}</b> (${a.temps.length} session${a.temps.length>1?"s":""} horodatée${a.temps.length>1?"s":""}) : ${[...new Set(a.temps.map(t=>t.d.slice(0,10)))].sort().map(j=>fmtD(j)+" — "+fmtMin(a.temps.filter(t=>t.d.slice(0,10)===j).reduce((s,t)=>s+(new Date(t.f)-new Date(t.d))/60000,0))).join(" · ")}</td></tr>`:""}
     <tr><th>Embauche cible</th><td>${fmtD(a.infos.dateEmbauche)}</td></tr>
     <tr><th>Auditeur</th><td>${esc(a.infos.auditeur)||"—"}</td></tr>
     <tr><th>Contact</th><td>${esc(a.infos.contact)||"—"} ${a.infos.refHandicap?"· Référent handicap : "+esc(a.infos.refHandicap):""}</td></tr></table>
@@ -1070,13 +1111,132 @@ function buildRapport(){
   <div class="gradband"></div>`;
 }
 
+/* ---------- SAUVEGARDE AUTOMATIQUE ---------- */
+let BAK_DIRTY=false;
+const bakOn=()=>localStorage.getItem("rayoneo_bak_on")!=="0";
+function bakToggle(){localStorage.setItem("rayoneo_bak_on",bakOn()?"0":"1");if(!cur)render()}
+function bakStamp(){const d=new Date();return d.toISOString().slice(0,10)+"-"+d.toTimeString().slice(0,5).replace(":","h")}
+function doBackup(){
+  if(!AUDITS.length)return;
+  const blob=new Blob([JSON.stringify(AUDITS,null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="rayoneo-sauvegarde-"+bakStamp()+".json";a.click();
+  URL.revokeObjectURL(a.href);
+  BAK_DIRTY=false;localStorage.setItem("rayoneo_bak_last",String(Date.now()));
+}
+async function partagerBackup(){
+  const data=JSON.stringify(AUDITS,null,1);
+  const f=new File([data],"rayoneo-sauvegarde-"+bakStamp()+".json",{type:"application/json"});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){
+    try{await navigator.share({files:[f],title:"Sauvegarde Rayoneo"})}catch(_){}
+  }else doBackup();
+}
+function bakLastLabel(){const t=+localStorage.getItem("rayoneo_bak_last");return t?new Date(t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"jamais"}
+
+/* Instantanés internes (OPFS) : haute fréquence, purge automatique — 15 conservés max */
+const SNAP_MAX=15;
+async function snapDir(){try{return await navigator.storage.getDirectory()}catch(e){return null}}
+async function snapSave(){
+  const dir=await snapDir();if(!dir||!AUDITS.length)return;
+  try{
+    const name="bak-"+Date.now()+".json";
+    const fh=await dir.getFileHandle(name,{create:true});
+    const w=await fh.createWritable();await w.write(JSON.stringify(AUDITS));await w.close();
+    /* purge : ne garder que les SNAP_MAX plus récents */
+    const all=[];for await(const[n]of dir.entries())if(n.startsWith("bak-"))all.push(n);
+    all.sort();
+    for(const n of all.slice(0,Math.max(0,all.length-SNAP_MAX)))await dir.removeEntry(n).catch(()=>{});
+  }catch(e){}
+}
+async function snapList(){
+  const dir=await snapDir();if(!dir)return[];
+  const out=[];for await(const[n,h]of dir.entries())if(n.startsWith("bak-")){
+    const f=await h.getFile();out.push({n,t:+n.slice(4,-5),size:f.size})}
+  return out.sort((a,b)=>b.t-a.t);
+}
+async function snapRestore(name){
+  const dir=await snapDir();if(!dir)return;
+  try{
+    const f=await(await dir.getFileHandle(name)).getFile();
+    const d=JSON.parse(await f.text());
+    let nv=0,maj=0;
+    d.forEach(a=>{const i=AUDITS.findIndex(x=>x.id===a.id);
+      if(i<0){AUDITS.push(migrate(a));nv++}
+      else if((a.maj||0)>(AUDITS[i].maj||0)){AUDITS[i]=migrate(a);maj++}});
+    saveAll();render();
+    alert("Restauration : "+nv+" audit(s) récupéré(s), "+maj+" mis à jour. Les versions locales plus récentes ont été conservées.");
+  }catch(e){alert("Restauration impossible : "+e.message)}
+}
+async function snapShowList(){
+  const l=await snapList();
+  const box=$("snaplist");if(!box)return;
+  box.innerHTML=l.length?l.map(s=>`<div class="audit-li" onclick="snapRestore('${s.n}')"><div class="ic">🕘</div><div style="flex:1"><div class="tt">${new Date(s.t).toLocaleString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div><div class="st">${Math.round(s.size/1024)} Ko — toucher pour restaurer (fusion, le plus récent gagne)</div></div></div>`).join("")
+   :"<p class='hint'>Aucun instantané interne pour le moment.</p>";
+}
+
+/* ---------- CHRONOMÈTRE D'ANALYSE ---------- */
+const CHRONO={run:false,start:0};
+function fmtMin(m){m=Math.round(m);return Math.floor(m/60)+" h "+String(m%60).padStart(2,"0")}
+function tempsTotalMin(a){
+  let t=(a.temps||[]).reduce((s,x)=>s+(new Date(x.f)-new Date(x.d))/60000,0);
+  if(CHRONO.run&&a===cur)t+=(Date.now()-CHRONO.start)/60000;
+  return t;
+}
+function chronoToggle(){
+  if(!cur)return;
+  if(!CHRONO.run){CHRONO.run=true;CHRONO.start=Date.now()}
+  else{cur.temps.push({d:new Date(CHRONO.start).toISOString(),f:new Date().toISOString()});CHRONO.run=false;persist()}
+  chronoRefresh();
+}
+function chronoRefresh(){
+  const b=$("chronobtn");if(!b)return;
+  if(!cur){if(CHRONO.run)chronoStopSilent();b.style.display="none";return}
+  b.style.display="";
+  b.textContent=(CHRONO.run?"⏸ ":"▶ ")+fmtMin(tempsTotalMin(cur));
+  b.style.background=CHRONO.run?"var(--magenta,#FF2770)":"rgba(255,255,255,.15)";
+}
+function chronoStopSilent(){if(CHRONO.run&&cur){cur.temps.push({d:new Date(CHRONO.start).toISOString(),f:new Date().toISOString()});persist()}CHRONO.run=false}
+
+/* ---------- REFORMULATION 1 CLIC PAR CLAUDE ---------- */
+async function reformuler(kind,id,btn){
+  if(!iaKey()){alert("Renseigne d'abord ta clé API (bouton 🔑 sur l'accueil).");iaOpenSettings();return}
+  let txt="";
+  if(kind==="j"){const o=cur.journal.find(x=>x.id===id);txt=o?o.notes:""}
+  else if(kind==="g")txt=(cur.grille[id]||{}).c||"";
+  else if(kind==="s")txt=cur.synthese||"";
+  if(!txt||txt.trim().length<15){alert("Rien à reformuler dans ce champ (ou texte trop court).");return}
+  const old=btn.textContent;btn.disabled=true;btn.textContent="⏳";
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:MODELES.haiku[0],max_tokens:1000,
+        messages:[{role:"user",content:"Reformule ces notes prises sur le terrain lors d'un audit de poste de travail, en français professionnel, clair et concis. Conserve rigoureusement toutes les informations factuelles (mesures, chiffres, noms, constats). Pas d'écriture inclusive. Réponds uniquement avec le texte reformulé.\n\nNotes : "+txt}]})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||d.error.type);
+    const nv=((d.content||[]).map(c=>c.text||"").join("")).trim();
+    if(!nv)throw new Error("réponse vide");
+    if(kind==="j"){const o=cur.journal.find(x=>x.id===id);if(o)o.notes=nv}
+    else if(kind==="g"){cur.grille[id].c=nv}
+    else if(kind==="s")cur.synthese=nv;
+    persist();render();return;
+  }catch(e){alert("⚠️ Reformulation impossible : "+(e.message||e))}
+  btn.disabled=false;btn.textContent=old;
+}
+
 /* ---------- SAISIE STYLET + TRANSCRIPTION IA (v2 : lissage, recadrage, relecture) ---------- */
 const PAD={ctx:null,target:null,strokes:[],cur:null,penSeen:false,init:false};
+const padModeGet=()=>localStorage.getItem("rayoneo_pad_mode")||"stylet";
+function padMode(){
+  localStorage.setItem("rayoneo_pad_mode",padModeGet()==="stylet"?"doigt":"stylet");
+  padModeLabel();
+}
+function padModeLabel(){$("padmode").textContent=padModeGet()==="stylet"?"✍️ Stylet seul":"👆 Doigt autorisé"}
 function stylet(kind,id){
-  if(!iaKey()){alert("La transcription manuscrite utilise l'IA : renseigne d'abord ta clé API dans l'assistant ✨ (réglages ⚙️).");return}
-  PAD.target={kind,id};PAD.strokes=[];PAD.cur=null;PAD.penSeen=false;
+  if(!iaKey()){alert("La transcription manuscrite utilise l'IA : renseigne d'abord ta clé API (bouton 🔑 sur l'accueil ou réglages ⚙️ de l'assistant ✨).");iaOpenSettings();return}
+  PAD.target={kind,id};PAD.strokes=[];PAD.cur=null;PAD.activeId=null;
   $("padresult").classList.add("hidden");$("padzone").classList.remove("hidden");
   $("padwrap").classList.remove("hidden");
+  padModeLabel();
   setTimeout(padSize,60);
 }
 function padSize(){
@@ -1102,25 +1262,33 @@ function padDrawFrom(ctx,s,from,scale,dx,dy){
   if(P.length===2&&from<=1){ctx.lineWidth=(2.4+(P[0].p||0.5)*2.4)*(scale||1);ctx.beginPath();ctx.moveTo((P[0].x-(dx||0))*(scale||1),(P[0].y-(dy||0))*(scale||1));ctx.lineTo((P[1].x-(dx||0))*(scale||1),(P[1].y-(dy||0))*(scale||1));ctx.stroke();return}
   for(let i=Math.max(2,from);i<P.length;i++)padSeg(ctx,P[i-2],P[i-1],P[i],scale,dx,dy);
 }
+function padAllowed(e){
+  /* mode "stylet" : seul le stylet trace — la paume et les doigts sont totalement ignorés,
+     quel que soit l'ordre où ils touchent l'écran. Mode "doigt" : tout contact trace. */
+  if(padModeGet()==="stylet")return e.pointerType==="pen";
+  return true;
+}
 function padBind(c){
   c.addEventListener("pointerdown",e=>{
-    if(e.pointerType==="pen")PAD.penSeen=true;
-    if(PAD.penSeen&&e.pointerType==="touch")return; /* rejet de la paume */
+    e.preventDefault();
+    if(!padAllowed(e))return;
+    if(PAD.cur&&e.pointerId!==PAD.activeId)return; /* un seul pointeur actif à la fois */
+    PAD.activeId=e.pointerId;
     PAD.cur={pts:[{x:e.offsetX,y:e.offsetY,p:e.pressure||0.5}],drawn:1};
     try{c.setPointerCapture(e.pointerId)}catch(_){}
-    e.preventDefault();
   },{passive:false});
   c.addEventListener("pointermove",e=>{
-    if(!PAD.cur)return;
-    if(PAD.penSeen&&e.pointerType==="touch")return;
+    if(!PAD.cur||e.pointerId!==PAD.activeId)return;
+    if(!padAllowed(e))return;
     const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
     for(const ev of evs)PAD.cur.pts.push({x:ev.offsetX,y:ev.offsetY,p:ev.pressure||0.5});
     padDrawFrom(PAD.ctx,PAD.cur,PAD.cur.drawn);PAD.cur.drawn=PAD.cur.pts.length;
     e.preventDefault();
   },{passive:false});
-  ["pointerup","pointercancel"].forEach(ev=>c.addEventListener(ev,()=>{
+  ["pointerup","pointercancel"].forEach(ev=>c.addEventListener(ev,e=>{
+    if(e.pointerId!==PAD.activeId)return;
     if(PAD.cur&&PAD.cur.pts.length>1)PAD.strokes.push(PAD.cur);
-    PAD.cur=null;
+    PAD.cur=null;PAD.activeId=null;
   }));
 }
 function padRedraw(){
@@ -1205,6 +1373,12 @@ function iaToggle(){
   }
 }
 function iaSettings(){$("iaset").classList.toggle("hidden")}
+function iaOpenSettings(){
+  $("iapanel").classList.remove("hidden");
+  $("iakey").value=iaKey();$("iamode").value=iaMode();
+  $("iamodetag").textContent=iaMode()==="auto"?"auto":MODELES[iaMode()][1];
+  $("iaset").classList.remove("hidden");iaRender();
+}
 function iaSaveSet(){
   localStorage.setItem("rayoneo_ia_key",$("iakey").value.trim());
   localStorage.setItem("rayoneo_ia_mode",$("iamode").value);
@@ -1309,9 +1483,23 @@ function chargerDemo(){
   curSection="infos";render();window.scrollTo(0,0);
 }
 
-/* ---------- INIT (v2 matching · charte Magenta Rise) ---------- */
+/* ---------- INIT (v3 terrain · charte Magenta Rise) ---------- */
 loadAll();render();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+const DL_MIN=2*60*60*1000; /* 2 h entre deux fichiers Téléchargements */
+const dlDue=()=>Date.now()-(+localStorage.getItem("rayoneo_bak_last")||0)>DL_MIN;
+setInterval(()=>{
+  if(!bakOn()||!BAK_DIRTY)return;
+  snapSave(); /* instantané interne : fréquent, auto-purgé */
+  if(dlDue())doBackup(); /* fichier Téléchargements : rare */
+},10*60*1000);
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden"){
+    chronoStopSilent();chronoRefresh();
+    if(bakOn()&&BAK_DIRTY){snapSave();if(dlDue())doBackup()}
+  }
+});
+setInterval(()=>{if(CHRONO.run)chronoRefresh()},30000);
 </script>
 </body>
 </html>
