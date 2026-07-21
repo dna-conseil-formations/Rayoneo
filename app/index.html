@@ -110,6 +110,12 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
 /* journal d'observation */
 .jour-entry{border:1px solid var(--bord);border-left:5px solid var(--bleu2);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#fff}
 .jour-date{font-family:'Poppins';font-weight:600;color:var(--bleu2);margin:14px 0 8px;font-size:15px}
+.photogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.ph-card{border:1px solid var(--bord);border-radius:10px;overflow:hidden;background:#fff;display:flex;flex-direction:column;margin:0}
+.ph-card img{width:100%;height:110px;object-fit:cover;display:block}
+.ph-card textarea{border:none;border-top:1px solid var(--bord);border-radius:0;min-height:48px;font-size:12.5px;padding:6px 8px;margin:0}
+.ph-card .ph-actions{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-top:1px solid var(--bord);gap:4px}
+.ph-card .micbtn{padding:5px 8px;font-size:12px;border:none}
 .micbtn{border:1.5px solid var(--bord);background:#fff;border-radius:9px;padding:8px 12px;font-size:14px;font-weight:600;color:var(--bleu2)}
 .micbtn.rec{background:var(--rouge);border-color:var(--rouge);color:#fff;animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.55}}
@@ -450,15 +456,47 @@ function migrate(a){
   if(!a.exig.dims)a.exig.dims={};
   if(a.infos&&a.infos.siren===undefined)Object.assign(a.infos,{siren:"",naf:"",catju:"",tranche:"",ea:"non"});
   if(!a.journal)a.journal=[];
+  a.journal.forEach(o=>{o.p=(o.p||[]).map(p=>typeof p==="string"?{src:p,cap:""}:p)});
   if(!a.temps)a.temps=[];
   (a.precos||[]).forEach(p=>{if(p.cmin===undefined){p.cmin=0;p.cmax=0}});
   delete a.cand;
   return a;
 }
-function loadAll(){try{AUDITS=(JSON.parse(localStorage.getItem("rayoneo_audits")||"[]")).map(migrate)}catch(e){AUDITS=[]}}
+/* Stockage principal : IndexedDB (capacité en gigaoctets, fini le plafond des 5 Mo).
+   Migration automatique depuis l'ancien localStorage au premier lancement. */
+let DB=null;
+function idbOpen(){return new Promise((res,rej)=>{
+  const q=indexedDB.open("rayoneo",1);
+  q.onupgradeneeded=e=>{e.target.result.createObjectStore("kv")};
+  q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);
+})}
+async function idbSet(k,v){DB=DB||await idbOpen();return new Promise((res,rej)=>{
+  const t=DB.transaction("kv","readwrite");t.objectStore("kv").put(v,k);
+  t.oncomplete=()=>res();t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);
+})}
+async function idbGet(k){DB=DB||await idbOpen();return new Promise((res,rej)=>{
+  const r=DB.transaction("kv").objectStore("kv").get(k);
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);
+})}
+async function loadAll(){
+  try{
+    const v=await idbGet("audits");
+    if(v&&v.length){AUDITS=v.map(migrate)}
+    else{
+      const ls=localStorage.getItem("rayoneo_audits");
+      if(ls){
+        AUDITS=JSON.parse(ls).map(migrate);
+        await idbSet("audits",AUDITS);              /* migration */
+        const check=await idbGet("audits");          /* vérification avant de libérer l'ancien espace */
+        if(check&&check.length===AUDITS.length)localStorage.removeItem("rayoneo_audits");
+      }else AUDITS=[];
+    }
+  }catch(e){
+    try{AUDITS=JSON.parse(localStorage.getItem("rayoneo_audits")||"[]").map(migrate)}catch(_){AUDITS=[]}
+  }
+}
 function saveAll(){
-  try{localStorage.setItem("rayoneo_audits",JSON.stringify(AUDITS))}
-  catch(e){alert("Mémoire pleine : supprimez des photos ou exportez puis supprimez d'anciens audits.")}
+  idbSet("audits",AUDITS).catch(e=>alert("⚠️ Enregistrement impossible : "+((e&&e.message)||e)+". Fais une synchronisation ou un export par sécurité."));
 }
 function persist(){if(cur){cur.maj=Date.now();saveAll();BAK_DIRTY=true}}
 function nouvelAudit(){
@@ -675,11 +713,32 @@ function obsPhoto(id,inp){
     const r=Math.min(1,MAX/Math.max(img.width,img.height));
     cv.width=img.width*r;cv.height=img.height*r;
     cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
-    const o=cur.journal.find(x=>x.id===id);if(o){(o.p=o.p||[]).push(cv.toDataURL("image/jpeg",.55));persist();render()}
+    const o=cur.journal.find(x=>x.id===id);if(o){(o.p=o.p||[]).push({src:cv.toDataURL("image/jpeg",.55),cap:""});persist();render()}
   };img.src=rd.result};
   rd.readAsDataURL(f);
 }
 function delObsPhoto(id,ix){const o=cur.journal.find(x=>x.id===id);o.p.splice(ix,1);persist();render()}
+function updPhotoCap(id,ix,v){const o=cur.journal.find(x=>x.id===id);if(o&&o.p[ix]){o.p[ix].cap=v;persist()}}
+async function analyserPhoto(id,ix,btn){
+  if(!iaKey()){alert("L'analyse de photo utilise l'IA : renseigne d'abord ta clé API (🔑 sur l'accueil).");iaOpenSettings();return}
+  const o=cur.journal.find(x=>x.id===id);const p=o&&o.p[ix];if(!p)return;
+  btn.disabled=true;const old=btn.textContent;btn.textContent="⏳";
+  try{
+    const mt=p.src.slice(5,p.src.indexOf(";"));const b64=p.src.split(",")[1];
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:300,
+        messages:[{role:"user",content:[
+          {type:"image",source:{type:"base64",media_type:mt,data:b64}},
+          {type:"text",text:"Photo prise lors d'un audit de poste de travail"+(o.etape?" — étape observée : "+o.etape:"")+(o.notes?". Contexte noté par l'auditeur : "+o.notes.slice(0,300):"")+". Décris en 1 ou 2 phrases factuelles ce que montre la photo d'utile pour l'audit : équipement, geste, environnement, contrainte, risque, point d'accessibilité. Texte brut, sans Markdown, sans introduction."}]}]})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||d.error.type);
+    const cap=nettoyerMd(((d.content||[]).map(c=>c.text||"").join("")));
+    if(!cap)throw new Error("réponse vide");
+    o.p[ix].cap=cap;persist();render();return;
+  }catch(e){alert("⚠️ Analyse impossible : "+(e.message||e))}
+  btn.disabled=false;btn.textContent=old;
+}
 let REC=null;
 function dicter(id,btn){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -726,11 +785,20 @@ function renderJournal(m){
         <button class="micbtn" onclick="dicter('${o.id}',this)">🎤</button>
         <button class="micbtn" onclick="stylet('j','${o.id}')" title="Saisie au stylet">✍️</button>
         <button class="micbtn" onclick="reformuler('j','${o.id}',this)" title="Reformuler par Claude">✨</button>
-        ${(o.p||[]).map((p,ix)=>`<span style="position:relative"><img src="${p}"><button onclick="delObsPhoto('${o.id}',${ix})" style="position:absolute;top:-6px;right:-6px;border:none;background:var(--rouge);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px">✕</button></span>`).join("")}
         <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
         <input type="file" accept="image/*" capture="environment" class="hidden" onchange="obsPhoto('${o.id}',this)">
         <button class="btn danger small" onclick="delObs('${o.id}')">Suppr.</button>
       </div>
+      ${(o.p||[]).length?`<div class="photogrid">
+        ${o.p.map((p,ix)=>`<figure class="ph-card">
+          <img src="${p.src}" alt="">
+          <textarea placeholder="Légende de la photo…" oninput="updPhotoCap('${o.id}',${ix},this.value)">${esc(p.cap||"")}</textarea>
+          <div class="ph-actions">
+            <button class="micbtn" onclick="analyserPhoto('${o.id}',${ix},this)" title="Décrire la photo par Claude">✨ Décrire</button>
+            <button class="micbtn" style="color:var(--rouge)" onclick="delObsPhoto('${o.id}',${ix})">✕</button>
+          </div>
+        </figure>`).join("")}
+      </div>`:""}
     </div>`).join("")}`).join("")}
   ${cur.journal.length===0?`<div class="card"><p class="hint">Aucune observation pour l'instant. Exemple d'usage : suivi d'une production sur 2 jours — créez une observation par étape (réception du lait, caillage, moulage, affinage…), dictez vos constats, photographiez les postes.</p></div>`:""}`;
 }
@@ -1069,7 +1137,7 @@ function buildRapport(){
   ${cur.journal.length?`<h2>${++S}. Journal d'observation terrain</h2>
   ${[...new Set(cur.journal.map(o=>o.date))].sort().map(d=>`<h3>📅 ${fmtD(d)}</h3>
   <table><tr><th style="width:60px">Heure</th><th style="width:26%">Étape / poste</th><th>Observations</th></tr>
-  ${cur.journal.filter(o=>o.date===d).sort((x,y)=>(x.heure||"")<(y.heure||"")?-1:1).map(o=>`<tr><td>${esc(o.heure)||"—"}</td><td>${esc(o.etape)||"—"}</td><td>${esc(o.notes).replace(/\n/g,"<br>")}${(o.p||[]).map(p=>`<br><img class="rphoto" src="${p}">`).join("")}</td></tr>`).join("")}</table>`).join("")}`:""}
+  ${cur.journal.filter(o=>o.date===d).sort((x,y)=>(x.heure||"")<(y.heure||"")?-1:1).map(o=>`<tr><td>${esc(o.heure)||"—"}</td><td>${esc(o.etape)||"—"}</td><td>${esc(o.notes).replace(/\n/g,"<br>")}${(o.p||[]).map(p=>`<br><img class="rphoto" src="${p.src||p}">${p.cap?`<br><em style="font-size:10.5px;color:#555">📷 ${esc(p.cap)}</em>`:""}`).join("")}</td></tr>`).join("")}</table>`).join("")}`:""}
 
   <h2>${++S}. Profil d'exigences du poste (données de matching)</h2>
   ${dimsRows?`<table><tr><th>Capacité mobilisée</th><th>Niveau requis</th><th>Adaptabilité</th><th>Précisions</th></tr>${dimsRows}</table>`:"<p>Profil d'exigences non renseigné.</p>"}
@@ -1574,8 +1642,8 @@ function chargerDemo(){
   curSection="infos";render();window.scrollTo(0,0);
 }
 
-/* ---------- INIT (v3 terrain · charte Magenta Rise) ---------- */
-loadAll();render();
+/* ---------- INIT (v4 · stockage IndexedDB · charte Magenta Rise) ---------- */
+loadAll().then(render);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 const DL_MIN=2*60*60*1000; /* 2 h entre deux fichiers Téléchargements */
 const dlDue=()=>Date.now()-(+localStorage.getItem("rayoneo_bak_last")||0)>DL_MIN;
