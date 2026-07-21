@@ -116,6 +116,8 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
 .ph-card textarea{border:none;border-top:1px solid var(--bord);border-radius:0;min-height:48px;font-size:12.5px;padding:6px 8px;margin:0}
 .ph-card .ph-actions{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-top:1px solid var(--bord);gap:4px}
 .ph-card .micbtn{padding:5px 8px;font-size:12px;border:none}
+.toastbox{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#141414;color:#fff;font-family:'Inter';font-size:13.5px;padding:10px 18px;border-radius:999px;border:1px solid #9A00FF;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;z-index:9999;max-width:90vw;text-align:center}
+.toastbox.on{opacity:.96;transform:translateX(-50%) translateY(0)}
 .micbtn{border:1.5px solid var(--bord);background:#fff;border-radius:9px;padding:8px 12px;font-size:14px;font-weight:600;color:var(--bleu2)}
 .micbtn.rec{background:var(--rouge);border-color:var(--rouge);color:#fff;animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.55}}
@@ -498,7 +500,16 @@ async function loadAll(){
 function saveAll(){
   idbSet("audits",AUDITS).catch(e=>alert("⚠️ Enregistrement impossible : "+((e&&e.message)||e)+". Fais une synchronisation ou un export par sécurité."));
 }
-function persist(){if(cur){cur.maj=Date.now();saveAll();BAK_DIRTY=true}}
+function persist(){if(cur){cur.maj=Date.now();saveAll();BAK_DIRTY=true;toast("💾 Enregistré automatiquement")}}
+/* toast discret : confirme l'enregistrement auto sans gêner la saisie */
+let TOAST_T=null,TOAST_LAST=0;
+function toast(msg,force){
+  const now=Date.now();if(!force&&now-TOAST_LAST<45000)return;TOAST_LAST=now;
+  let el=document.getElementById("toastbox");
+  if(!el){el=document.createElement("div");el.id="toastbox";el.className="toastbox";document.body.appendChild(el)}
+  el.textContent=msg;el.classList.add("on");
+  clearTimeout(TOAST_T);TOAST_T=setTimeout(()=>el.classList.remove("on"),2600);
+}
 function nouvelAudit(){
   const a={id:"a"+Date.now(),cree:Date.now(),maj:Date.now(),
    infos:{entreprise:"",secteur:"prive",effectif:"",adresse:"",contact:"",refHandicap:"",auditeur:"",dateAudit:new Date().toISOString().slice(0,10),poste:"",service:"",contrat:"CDI",dateEmbauche:"",siren:"",naf:"",catju:"",tranche:"",ea:"non"},
@@ -706,16 +717,21 @@ function prechargerEtapes(liste){
 function updObs(id,k,v){const o=cur.journal.find(x=>x.id===id);if(o){o[k]=v;persist();if(k==="date")render()}}
 function delObs(id){if(!confirm("Supprimer cette observation ?"))return;cur.journal=cur.journal.filter(x=>x.id!==id);persist();render()}
 function obsPhoto(id,inp){
-  const f=inp.files[0];if(!f)return;
-  const img=new Image();const rd=new FileReader();
-  rd.onload=()=>{img.onload=()=>{
-    const cv=document.createElement("canvas");const MAX=900;
-    const r=Math.min(1,MAX/Math.max(img.width,img.height));
-    cv.width=img.width*r;cv.height=img.height*r;
-    cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
-    const o=cur.journal.find(x=>x.id===id);if(o){(o.p=o.p||[]).push({src:cv.toDataURL("image/jpeg",.55),cap:""});persist();render()}
-  };img.src=rd.result};
-  rd.readAsDataURL(f);
+  const fs=[...inp.files];if(!fs.length)return;inp.value="";
+  let done=0;
+  fs.forEach(f=>{
+    const img=new Image();const rd=new FileReader();
+    rd.onload=()=>{img.onload=()=>{
+      const cv=document.createElement("canvas");const MAX=900;
+      const r=Math.min(1,MAX/Math.max(img.width,img.height));
+      cv.width=img.width*r;cv.height=img.height*r;
+      cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      const o=cur.journal.find(x=>x.id===id);
+      if(o)(o.p=o.p||[]).push({src:cv.toDataURL("image/jpeg",.55),cap:""});
+      if(++done===fs.length){persist();render();toast("💾 "+(fs.length>1?fs.length+" photos ajoutées et enregistrées":"Photo ajoutée et enregistrée")+" automatiquement ✓",true)}
+    };img.src=rd.result};
+    rd.readAsDataURL(f);
+  });
 }
 function delObsPhoto(id,ix){const o=cur.journal.find(x=>x.id===id);o.p.splice(ix,1);persist();render()}
 function updPhotoCap(id,ix,v){const o=cur.journal.find(x=>x.id===id);if(o&&o.p[ix]){o.p[ix].cap=v;persist()}}
@@ -787,6 +803,8 @@ function renderJournal(m){
         <button class="micbtn" onclick="reformuler('j','${o.id}',this)" title="Reformuler par Claude">✨</button>
         <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
         <input type="file" accept="image/*" capture="environment" class="hidden" onchange="obsPhoto('${o.id}',this)">
+        <button class="btn sec small" onclick="this.nextElementSibling.click()" title="Importer des photos depuis la galerie ou les fichiers">📁 Importer</button>
+        <input type="file" accept="image/*" multiple class="hidden" onchange="obsPhoto('${o.id}',this)">
         <button class="btn danger small" onclick="delObs('${o.id}')">Suppr.</button>
       </div>
       ${(o.p||[]).length?`<div class="photogrid">
