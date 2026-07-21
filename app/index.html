@@ -801,10 +801,10 @@ function renderJournal(m){
         <button class="micbtn" onclick="dicter('${o.id}',this)">🎤</button>
         <button class="micbtn" onclick="stylet('j','${o.id}')" title="Saisie au stylet">✍️</button>
         <button class="micbtn" onclick="reformuler('j','${o.id}',this)" title="Reformuler par Claude">✨</button>
-        <button class="btn sec small" onclick="this.nextElementSibling.click()">📷 Photo</button>
-        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="obsPhoto('${o.id}',this)">
-        <button class="btn sec small" onclick="this.nextElementSibling.click()" title="Importer des photos depuis la galerie ou les fichiers">📁 Importer</button>
-        <input type="file" accept="image/*" multiple class="hidden" onchange="obsPhoto('${o.id}',this)">
+        <button class="btn sec small" onclick="document.getElementById('cam_${o.id}').click()" title="Prendre une photo avec l'appareil">📷 Photo</button>
+        <input id="cam_${o.id}" type="file" accept="image/*" capture="environment" class="hidden" onchange="obsPhoto('${o.id}',this)">
+        <button class="btn sec small" onclick="document.getElementById('imp_${o.id}').click()" title="Importer des photos depuis la galerie ou les fichiers">📁 Importer</button>
+        <input id="imp_${o.id}" type="file" accept="image/*" multiple class="hidden" onchange="obsPhoto('${o.id}',this)">
         <button class="btn danger small" onclick="delObs('${o.id}')">Suppr.</button>
       </div>
       ${(o.p||[]).length?`<div class="photogrid">
