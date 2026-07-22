@@ -171,6 +171,19 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
 .couv .c2{font-size:17px;color:#444;margin:0 0 20px}
 .couv .c3{font-size:14px;color:#777;margin:0 0 46px}
 .couv .c4{font-size:13px;font-weight:600;color:#555;margin:0}
+.couv .badge-ext{margin-top:22px;border:1.5px solid #9A00FF;border-radius:10px;padding:10px 18px;font-size:13px;color:#141414}
+.couv .badge-ext b{font-family:'Poppins'}
+/* filigrane version confidentielle (répété sur chaque page à l'impression) */
+.wmark{position:fixed;top:44%;left:50%;width:130%;transform:translate(-50%,-50%) rotate(-27deg);text-align:center;font-family:'Poppins';font-weight:700;font-size:30px;line-height:1.3;color:rgba(154,0,255,.10);z-index:50;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fiche-enc{border:1.5px solid #9A00FF;border-left:6px solid #9A00FF;border-radius:8px;padding:10px 14px;margin:12px 0;font-size:13px}
+.fiche-enc b{font-family:'Poppins'}
+.fiche-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}
+.fiche-2col>div{border:1px solid #d5cbe2;border-radius:8px;padding:10px 12px;font-size:12.5px;page-break-inside:avoid}
+.fiche-2col h4{font-family:'Poppins';font-size:13px;margin:0 0 8px}
+.fiche-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.fiche-photos figure{margin:0;page-break-inside:avoid}
+.fiche-photos img{width:100%;height:100px;object-fit:cover;border-radius:6px}
+.fiche-photos figcaption{font-size:10.5px;color:#555;margin-top:3px}
 </style>
 </head>
 <body>
@@ -571,7 +584,7 @@ function renderNav(){
 function hideNav(){const n=document.querySelector("nav.sections");if(n)n.classList.add("hidden")}
 
 /* ---------- ACCUEIL ---------- */
-const APPV="v26";
+const APPV="v27";
 function renderHome(){
   hideNav();
   const m=$("main");
@@ -1337,19 +1350,26 @@ function voirRapport(print){
 }
 /* Version diffusable : neutralise les procédés / recettes / paramètres via l'IA (si clé), garde les contraintes du poste */
 async function voirRapportLight(btn){
-  let T={description:cur.taches.description||"",principales:cur.taches.principales||"",exigences:cur.taches.exigences||"",synthese:cur.synthese||""};
-  if(iaKey()&&(T.description||T.principales||T.exigences||T.synthese)){
+  let T={description:cur.taches.description||"",principales:cur.taches.principales||"",exigences:cur.taches.exigences||"",synthese:cur.synthese||"",photos:[]};
+  /* photos illustratives : celles du journal qui ont une légende (max 4) */
+  const cand=cur.journal.flatMap(o=>(o.p||[]).filter(p=>p&&p.src&&(p.cap||"").trim()).map(p=>({src:p.src,cap:p.cap}))).slice(0,4);
+  T.photos=cand.map(p=>({src:p.src,cap:p.cap}));
+  if(iaKey()&&(T.description||T.principales||T.exigences||T.synthese||cand.length)){
     let old="";if(btn){btn.disabled=true;old=btn.textContent;btn.textContent="⏳ Neutralisation des informations sensibles…"}
     try{
-      const prompt="Tu prépares la VERSION DIFFUSABLE d'un rapport d'analyse de poste (destinée à des tiers : candidats, partenaires emploi). Voici les textes internes :\n\n[description]\n"+T.description+"\n\n[principales]\n"+T.principales+"\n\n[exigences]\n"+T.exigences+(T.synthese?"\n\n[synthese]\n"+T.synthese:"")
-        +"\n\nRéécris ces textes pour une diffusion externe en respectant STRICTEMENT ces deux règles :\n1. SUPPRIME ou GÉNÉRALISE tout ce qui relève du savoir-faire propre de l'entreprise : recettes, procédés de fabrication, paramètres techniques (températures, durées, dosages, quantités), noms de produits en développement, fournisseurs, clients, prix, données commerciales. Exemple : « cuisson à 92 °C pendant 40 minutes » devient « étape de cuisson contrôlée ».\n2. CONSERVE fidèlement la réalité du poste : les contraintes physiques et organisationnelles, les difficultés, les risques et les exigences restent visibles et honnêtes. Ne rien enjoliver, ne rien camoufler.\nMême structure (les listes restent des listes avec « - »), texte brut sans Markdown.\n\nTa réponse doit commencer par { et finir par } : uniquement le JSON {\"description\":\"…\",\"principales\":\"…\",\"exigences\":\"…\",\"synthese\":\"…\"} (retours à la ligne encodés \\n), aucun texte avant ou après.";
+      const prompt="Tu prépares la VERSION EXTERNE d'une analyse de poste (fiche destinée aux partenaires : ESAT, structures d'accompagnement, acteurs de l'emploi). Voici les textes internes :\n\n[description]\n"+T.description+"\n\n[principales]\n"+T.principales+"\n\n[exigences]\n"+T.exigences+(T.synthese?"\n\n[synthese]\n"+T.synthese:"")
+        +(cand.length?"\n\n[legendes de photos]\n"+cand.map((p,i)=>(i+1)+". "+p.cap).join("\n"):"")
+        +"\n\nRéécris ces textes pour une diffusion externe en respectant STRICTEMENT ces deux règles :\n1. SUPPRIME ou GÉNÉRALISE tout ce qui relève du savoir-faire propre de l'entreprise : recettes, procédés de fabrication précis, paramètres techniques (températures, durées, dosages, quantités), noms de produits en développement, fournisseurs, clients, prix, données commerciales. Exemple : « cuisson à 92 °C pendant 40 minutes » devient « étape de cuisson contrôlée ».\n2. CONSERVE fidèlement la réalité du poste : les contraintes physiques et organisationnelles, les difficultés, les risques et les exigences restent visibles et honnêtes. Ne rien enjoliver, ne rien camoufler.\nLes légendes de photos deviennent courtes et neutres (4 à 6 mots, ex : « Brassage de la préparation »). Même structure (les listes restent des listes avec « - »), texte brut sans Markdown.\n\nTa réponse doit commencer par { et finir par } : uniquement le JSON {\"description\":\"…\",\"principales\":\"…\",\"exigences\":\"…\",\"synthese\":\"…\",\"legendes\":[\"…\"]} (retours à la ligne encodés \\n, legendes dans le même ordre), aucun texte avant ou après.";
       const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
         headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
         body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:4000,messages:[{role:"user",content:prompt}]})});
       const d=await r.json();
       if(!d.error){
         const res=jsonSouple((d.content||[]).map(c=>c.text||"").join(""));
-        if(res)["description","principales","exigences","synthese"].forEach(k=>{if(typeof res[k]==="string")T[k]=nettoyerMd(res[k])});
+        if(res){
+          ["description","principales","exigences","synthese"].forEach(k=>{if(typeof res[k]==="string")T[k]=nettoyerMd(res[k])});
+          if(Array.isArray(res.legendes))T.photos.forEach((p,i)=>{if(typeof res.legendes[i]==="string"&&res.legendes[i].trim())p.cap=nettoyerMd(res.legendes[i])});
+        }
       }
     }catch(_){/* repli : textes d'origine */}
     if(btn){btn.disabled=false;btn.textContent=old}
@@ -1361,10 +1381,122 @@ async function voirRapportLight(btn){
   $("rapport").classList.remove("hidden");
   window.scrollTo(0,0);
 }
+/* repères d'accompagnement par capacité (lecture partenaire) */
+const REPERES={
+ mobilite:"Repérer les déplacements réels et sécuriser les cheminements ; évaluer l'endurance de déplacement.",
+ charges:"Évaluer le port de charge en situation réelle ; envisager aides techniques ou fractionnement.",
+ debout:"Évaluer l'endurance ; prévoir si besoin une alternance des postures, des appuis ou des pauses.",
+ assise:"Vérifier la tolérance à la posture assise prolongée ; siège adapté possible.",
+ dexterite:"Observer la dextérité, la coordination et la capacité à appliquer une méthode ; décomposer les gestes.",
+ vision:"Vérifier le contrôle visuel requis ; contrastes, agrandissements ou repères tactiles possibles.",
+ ecran:"Évaluer le temps d'écran ; réglages d'affichage et outils adaptés possibles.",
+ audition:"Vérifier la compréhension des consignes ; supports écrits et visuels possibles.",
+ oral:"Évaluer l'expression orale réellement nécessaire ; modes de communication alternatifs possibles.",
+ lecture:"Vérifier le niveau de lecture/écriture nécessaire ; consignes imagées ou FALC possibles.",
+ concentration:"Utiliser des consignes simples, visibles et répétées pendant l'apprentissage.",
+ memoire:"S'appuyer sur la répétition des séquences ; supports pas à pas et tutorat.",
+ stress:"Prévoir un environnement prévisible et des points de régulation réguliers.",
+ social:"Vérifier la capacité à travailler en coactivité ; préparer le collectif de travail.",
+ autonomie:"Autonomie possible après apprentissage validé ; montée en charge progressive.",
+ rythme:"Prévoir une montée en charge progressive et des repères temporels clairs.",
+ conduite:"Vérifier aptitudes et habilitations de conduite ; alternatives d'organisation possibles."};
+const PARCOURS_EXT=[
+ ["Présélection","Partager le profil recherché et repérer les candidats susceptibles de correspondre."],
+ ["Visite et immersion","Découvrir le site, observer les tâches et organiser une mise en situation lorsque c'est possible."],
+ ["Recueil des besoins","Échanger avec le candidat sur ses besoins de compensation, avec son accord sur les informations partagées."],
+ ["Ajustement de l'analyse","Mettre en relation les exigences du poste et les besoins concrets du candidat."],
+ ["Préconisations","Solliciter si nécessaire Cap emploi, France Travail, le SPST ou une expertise spécialisée."],
+ ["Financement et équipement","Déposer les demandes d'aide, commander le matériel, préparer les adaptations retenues."],
+ ["Préparation du collectif","Informer l'équipe, accompagner le manager, désigner un tuteur ou référent d'intégration."],
+ ["Vérification avant accueil","Contrôler l'installation du poste, les supports et les modalités de communication."],
+ ["Accueil progressif","Prévoir un apprentissage accompagné, des objectifs réalistes et des points de régulation."],
+ ["Suivi","Organiser des bilans à une semaine, un mois, en cours de période d'essai et à six mois."]];
+function ficheExterneHTML(a,T){
+  const datesObs=[...new Set(a.journal.map(o=>o.date))].sort();
+  const dimsOn=DIMS.filter(([id])=>a.exig.dims[id]&&a.exig.dims[id].niv>0);
+  const aVerifier=dimsOn.filter(([id])=>a.exig.dims[id].niv>=2).map(([id,lb])=>lb);
+  const photos=(T.photos||[]).slice(0,4);
+  return `
+  <div class="no-print" style="padding:10px 0;display:flex;gap:8px">
+    <button class="btn sec small" onclick="render()">← Retour</button>
+    <button class="btn small" onclick="window.print()">🖨️ Imprimer / PDF</button>
+  </div>
+  <div class="couv">
+    <img src="${LOGO_R}" alt="Rayoneo">
+    <h1>Fiche de présentation du poste</h1>
+    <div class="barre"></div>
+    ${a.infos.poste?`<p class="c1">${esc(a.infos.poste)}</p>`:""}
+    ${a.infos.entreprise?`<p class="c2">${esc(a.infos.entreprise)}</p>`:""}
+    <p class="c3">${datesObs.length?"Observation terrain : "+datesObs.map(fmtD).join(", "):""}</p>
+    <p class="c4">Rayoneo — faire rayonner les talents</p>
+    <div class="badge-ext"><b>VERSION EXTERNE DESTINÉE AUX PARTENAIRES</b><br>ESAT · structures d'accompagnement · acteurs de l'emploi</div>
+  </div>
+
+  <h2>1. Objet et cadre de la synthèse</h2>
+  <div class="fiche-enc"><b>Finalité du document</b><br>Cette version présente le contenu du poste, les compétences mobilisées et les possibilités d'adaptation afin de faciliter le dialogue avec un ESAT ou tout autre partenaire du parcours professionnel. Elle permet de préparer l'identification d'un profil, une visite de site et, le cas échéant, une mise en situation.</div>
+  <table>
+    <tr><th style="width:32%">Structure</th><td>${esc(a.infos.entreprise)||"—"}</td></tr>
+    ${a.infos.siren?`<tr><th>SIREN / activité</th><td>${esc(a.infos.siren)}${a.infos.naf?" · NAF "+esc(a.infos.naf):""}</td></tr>`:""}
+    <tr><th>Poste</th><td>${esc(a.infos.poste)||"—"}${a.infos.contrat?" — "+esc(a.infos.contrat):""}</td></tr>
+    <tr><th>Lieu d'observation</th><td>Site de la structure</td></tr>
+    ${datesObs.length?`<tr><th>Période observée</th><td>${datesObs.map(fmtD).join(", ")}</td></tr>`:""}
+    ${a.infos.dateEmbauche?`<tr><th>Embauche cible</th><td>${fmtD(a.infos.dateEmbauche)}</td></tr>`:""}
+    ${a.infos.contact?`<tr><th>Contact structure</th><td>${esc(a.infos.contact)}</td></tr>`:""}
+    <tr><th>Analyse de poste</th><td>${esc(a.infos.auditeur)||"—"} — Rayoneo</td></tr>
+  </table>
+  <div class="fiche-enc"><b>Périmètre de cette version externe</b><br>La synthèse ne reprend pas les constats détaillés relevant de l'audit interne d'organisation, de conformité, de sécurité et d'hygiène. Ces éléments font l'objet d'un traitement distinct avec l'employeur. Avant toute mise en situation, les informations nécessaires à l'accueil et à la sécurité du candidat seront partagées avec le partenaire et le candidat.</div>
+
+  <h2>2. Mission et déroulement de l'activité</h2>
+  ${T.description?`<p>${esc(T.description).replace(/\n/g,"<br>")}</p>`:""}
+  ${T.principales?`<h3>Tâches principales observées</h3><p>${esc(T.principales).replace(/\n/g,"<br>")}</p>`:""}
+  ${photos.length?`<h3>Aperçu du processus observé</h3>
+  <div class="fiche-photos">${photos.map(p=>`<figure><img src="${p.src}">${p.cap?`<figcaption>${esc(p.cap)}</figcaption>`:""}</figure>`).join("")}</div>
+  <p style="font-size:11px;color:var(--gris)">Photographies issues de l'observation terrain${datesObs.length?" ("+datesObs.map(fmtD).join(", ")+")":""}.</p>`:""}
+
+  <h2>3. Conditions d'exercice et compétences mobilisées</h2>
+  <div class="fiche-enc"><b>Un poste structuré mais exigeant</b><br>La répétition des séquences facilite l'apprentissage. Le poste mobilise toutefois des capacités physiques, gestuelles et attentionnelles qui doivent être appréciées en situation avec le candidat.</div>
+  ${dimsOn.length?`<table><tr><th>Capacité mobilisée</th><th style="width:12%">Niveau</th><th>Caractéristiques du poste</th><th>Repères pour l'accompagnement</th></tr>
+  ${dimsOn.map(([id,lb])=>{const d=a.exig.dims[id];
+    return `<tr><td>${lb}</td><td>${NIVX[d.niv]}</td><td>${esc(d.com||"—")}</td><td style="font-size:11.5px">${REPERES[id]||""}</td></tr>`}).join("")}</table>`:"<p>Profil d'exigences non renseigné.</p>"}
+  ${T.exigences?`<h3>Contraintes particulières à connaître</h3><p>${esc(T.exigences).replace(/\n/g,"<br>")}</p>`:""}
+
+  <h2>4. Repères d'adaptation selon les besoins du candidat</h2>
+  <table><tr><th>Situation</th><th>Éléments à évaluer</th><th>Aménagements ou appuis envisageables</th></tr>
+  ${Object.entries(FAMS).map(([fk,fam])=>{const r=compatFam(fk);
+    return `<tr><td>${fam.t}</td><td>${r.raisons.length?r.raisons.map(esc).join("<br>"):"À apprécier en situation avec le candidat."}</td><td style="font-size:11.5px">${esc(fam.am)}</td></tr>`}).join("")}
+  </table>
+  <div class="fiche-enc"><b>Statut du candidat</b><br>La mobilisation de nombreux dispositifs suppose que la situation administrative du candidat soit connue et anticipée, notamment la RQTH ou un autre titre ouvrant les droits associés.</div>
+  <h3>Appuis mobilisables selon la situation</h3>
+  <p>- Cap emploi ou France Travail pour la préparation du parcours, l'immersion et la sécurisation de l'intégration.<br>
+  - Service de prévention et de santé au travail pour l'évaluation et les préconisations d'aménagement.<br>
+  - Agefiph ou FIPHFP selon le statut de l'employeur et du candidat, pour les études, aides techniques ou adaptations.<br>
+  - Prestations d'appuis spécifiques et expertise du handicap lorsque la situation le nécessite.</p>
+
+  <h2>5. Parcours conseillé avant la prise de poste</h2>
+  <table><tr><th style="width:34%">Étape</th><th>Contenu</th></tr>
+  ${PARCOURS_EXT.map((e,i)=>`<tr><td><b>${i+1}. ${e[0]}</b></td><td>${e[1]}</td></tr>`).join("")}</table>
+  <div class="fiche-enc"><b>Modalité recommandée pour un partenaire</b><br>Commencer par une visite accompagnée du site, puis envisager une mise en situation courte et progressive. Cette étape permet de vérifier la compréhension des séquences, les capacités physiques et gestuelles, la tolérance à l'environnement et les besoins de tutorat.</div>
+
+  <h2>6. Synthèse pour le partenaire</h2>
+  <div class="fiche-2col">
+    <div><h4>✅ Atouts du poste</h4>
+      - Activité concrète et directement observable.<br>
+      - Processus récurrent et décomposable en étapes.<br>
+      - Apprentissage possible par démonstration et répétition.<br>
+      - Travail en équipe et présence de personnes ressources.</div>
+    <div><h4>🔎 Éléments à vérifier avec le candidat</h4>
+      ${aVerifier.length?aVerifier.map(v=>"- "+esc(v)).join("<br>"):"- À définir à partir du profil d'exigences."}</div>
+  </div>
+  <div class="fiche-enc"><b>Prochaine étape proposée</b><br>Organiser une visite de site avec le partenaire et le candidat, puis définir ensemble la durée et les objectifs d'une première mise en situation. À l'issue de cette étape, l'analyse pourra être actualisée à partir des besoins réels du candidat.</div>
+
+  <p style="font-size:11px;color:var(--gris);margin-top:16px">Document de synthèse externe généré le ${new Date().toLocaleDateString("fr-FR")} — diffusion aux partenaires du parcours professionnel. Le rapport détaillé interne demeure le document de référence pour le suivi des actions avec l'employeur. Les éléments relevant du savoir-faire de l'entreprise (procédés, paramètres, données commerciales) ne figurent pas dans cette version.</p>
+  <div class="gradband"></div>`;
+}
 function buildRapport(mode,TXT){
   const light=mode==="light";
   const a=cur,c=statCounts();
   const T=TXT||{description:a.taches.description,principales:a.taches.principales,exigences:a.taches.exigences,synthese:a.synthese};
+  if(light){$("rapport").innerHTML=ficheExterneHTML(a,T);return}
   const sect={prive:"Secteur privé",public:"Fonction publique",asso:"Association"}[a.infos.secteur];
   const finUsed={};cur.precos.forEach(p=>p.fins.forEach(f=>finUsed[f]=true));
   const dimsRows=DIMS.map(([id,lb])=>{
@@ -1373,6 +1505,7 @@ function buildRapport(mode,TXT){
   }).join("");
   let S=3; /* numérotation dynamique des sections après "3. Le poste" */
   $("rapport").innerHTML=`
+  <div class="wmark">Document confidentiel<br>destiné uniquement à une communication interne</div>
   <div class="no-print" style="padding:10px 0;display:flex;gap:8px">
     <button class="btn sec small" onclick="render()">← Retour</button>
     <button class="btn small" onclick="window.print()">🖨️ Imprimer / PDF</button>
