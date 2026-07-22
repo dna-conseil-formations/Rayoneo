@@ -553,12 +553,13 @@ function renderNav(){
 function hideNav(){const n=document.querySelector("nav.sections");if(n)n.classList.add("hidden")}
 
 /* ---------- ACCUEIL ---------- */
+const APPV="v22";
 function renderHome(){
   hideNav();
   const m=$("main");
   m.innerHTML=`
   <div class="card">
-    <h2>📋 Mes analyses de poste</h2>
+    <h2>📋 Mes analyses de poste <span style="font-size:11px;font-weight:400;color:var(--gris);vertical-align:middle">— app ${APPV}</span></h2>
     ${AUDITS.length?AUDITS.map(a=>{
       const n=Object.values(a.grille).filter(g=>g.n).length;
       return `<div class="audit-li" onclick="openAudit('${a.id}')">
@@ -1863,7 +1864,11 @@ function chargerDemo(){
 
 /* ---------- INIT (v4 · stockage IndexedDB · charte Magenta Rise) ---------- */
 loadAll().then(render);
-if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+  let dejaRecharge=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(dejaRecharge)return;dejaRecharge=true;location.reload()});
+}
 const DL_MIN=2*60*60*1000; /* 2 h entre deux fichiers Téléchargements */
 const dlDue=()=>Date.now()-(+localStorage.getItem("rayoneo_bak_last")||0)>DL_MIN;
 setInterval(()=>{
