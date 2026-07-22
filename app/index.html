@@ -826,6 +826,23 @@ function setDim(id,k,v){
   const d=cur.exig.dims[id]=cur.exig.dims[id]||{niv:0,adapt:"oui",com:""};
   d[k]=v;persist();if(k!=="com")render();
 }
+/* Parseur JSON tolérant : accepte les blocs de code, le texte autour, et répare une réponse tronquée */
+function jsonSouple(txt){
+  txt=String(txt||"").replace(/```(json)?/g,"");
+  const m0=txt.indexOf("{");if(m0<0)return null;
+  let t=txt.slice(m0,txt.lastIndexOf("}")+1||undefined);
+  try{return JSON.parse(t)}catch(_){}
+  /* réparation d'une troncature : on coupe à la dernière entrée complète puis on referme les accolades */
+  t=txt.slice(m0);
+  for(let cut=t.length;cut>2;){
+    cut=t.lastIndexOf("}",cut-1);if(cut<2)break;
+    let frag=t.slice(0,cut+1);
+    const opens=(frag.match(/{/g)||[]).length-(frag.match(/}/g)||[]).length;
+    if(opens>0)frag+="}".repeat(opens);
+    try{return JSON.parse(frag)}catch(_){}
+  }
+  return null;
+}
 async function exigIA(btn){
   if(!iaKey()){alert("Le pré-remplissage utilise l'IA : renseigne d'abord ta clé API (🔑 sur l'accueil).");iaOpenSettings();return}
   if(!cur.journal.length){alert("Le journal d'observation est vide : remplis-le d'abord (étape 3), c'est lui que Claude analyse.");return}
@@ -840,17 +857,15 @@ async function exigIA(btn){
       +(cur.infos.poste?" (intitulé : "+cur.infos.poste+")":"")+(cur.infos.service?", service : "+cur.infos.service:"")+" :\n\n"+jr
       +"\n\nÀ partir de ces observations UNIQUEMENT, évalue le niveau requis par le POSTE (pas par une personne) pour chaque capacité de la liste. Barème niv : 0=non requis, 1=faible, 2=moyen, 3=élevé. Champ adapt (uniquement si niv>0) : \"oui\" si l'exigence est aménageable (aide technique, réorganisation, réattribution de tâche), \"partiel\", ou \"non\" si incontournable. Champ com : 1 phrase factuelle justifiant le niveau à partir du journal, texte brut sans Markdown ; si niv=0, com vide. N'invente rien : si le journal ne permet pas d'évaluer une capacité, omets-la.\n\nCapacités (id → libellé) :\n"
       +DIMS.map(([id,lb])=>id+" → "+lb).join("\n")
-      +"\n\nRéponds UNIQUEMENT par un JSON de la forme {\"dims\":{\"id\":{\"niv\":2,\"adapt\":\"oui\",\"com\":\"…\"}},\"note\":\"2 phrases max sur les marges de manœuvre du poste\"} sans autre texte.";
+      +"\n\nTa réponse doit commencer par { et finir par } : uniquement le JSON {\"dims\":{\"id\":{\"niv\":2,\"adapt\":\"oui\",\"com\":\"…\"}},\"note\":\"2 phrases max sur les marges de manœuvre du poste\"}, aucun texte avant ou après, pas de bloc de code.";
     const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
       headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:2500,messages:[{role:"user",content:prompt}]})});
+      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:8000,messages:[{role:"user",content:prompt},{role:"assistant",content:"{\"dims\":{"}]})});
     const d=await r.json();
     if(d.error)throw new Error(d.error.message||d.error.type);
-    const txt=(d.content||[]).map(c=>c.text||"").join("");
-    const m0=txt.indexOf("{"),m1=txt.lastIndexOf("}");
-    if(m0<0||m1<=m0)throw new Error("réponse inattendue de l'IA");
-    const res=JSON.parse(txt.slice(m0,m1+1));
-    if(!res.dims||typeof res.dims!=="object")throw new Error("format inattendu — rien n'a été modifié");
+    const txt="{\"dims\":{"+(d.content||[]).map(c=>c.text||"").join("");
+    const res=jsonSouple(txt);
+    if(!res||!res.dims||typeof res.dims!=="object")throw new Error("format inattendu — rien n'a été modifié. Début de la réponse : "+txt.slice(0,160));
     const OK=new Set(DIMS.map(([id])=>id));let n=0;
     Object.entries(res.dims).forEach(([id,v])=>{
       if(!OK.has(id)||!v)return;
@@ -923,18 +938,16 @@ async function auditIA(btn){
     const lignes=[];GRILLE.forEach(d=>d.items.forEach((it,i)=>lignes.push(d.id+"_"+i+" → ["+d.t+"] "+it)));
     const prompt="Tu es ergonome et auditeur accessibilité, spécialiste de l'analyse de poste pour l'inclusion des personnes en situation de handicap. Journal d'observation terrain d'un poste"
       +(cur.infos.poste?" (intitulé : "+cur.infos.poste+")":"")+(cur.infos.service?", service : "+cur.infos.service:"")+" :\n\n"+jr
-      +"\n\nÀ partir de ces observations UNIQUEMENT, note les points de la grille d'audit ci-dessous. Notes possibles : \"C\" conforme, \"A\" à adapter (aménagement nécessaire), \"B\" bloquant (obstacle majeur), \"N\" non concerné par ce poste. Champ c : 1 phrase factuelle tirée du journal justifiant la note, texte brut sans Markdown. Règle stricte : n'évalue QUE les points pour lesquels le journal apporte un constat explicite ou une déduction solide (ex : sols carrelés glissants observés → point sols/glissance) ; omets tous les autres, n'invente rien, et n'utilise \"N\" que si le journal montre clairement que le point est sans objet pour ce poste.\n\nGrille (id → point) :\n"+lignes.join("\n")
-      +"\n\nRéponds UNIQUEMENT par un JSON de la forme {\"items\":{\"id\":{\"n\":\"A\",\"c\":\"…\"}}} sans autre texte.";
+      +"\n\nÀ partir de ces observations UNIQUEMENT, note les points de la grille d'audit ci-dessous. Notes possibles : \"C\" conforme, \"A\" à adapter (aménagement nécessaire), \"B\" bloquant (obstacle majeur), \"N\" non concerné par ce poste. Champ c : justification factuelle tirée du journal, 15 mots maximum, texte brut sans Markdown. Règle stricte : n'évalue QUE les points pour lesquels le journal apporte un constat explicite ou une déduction solide (ex : sols carrelés glissants observés → point sols/glissance) ; omets tous les autres, n'invente rien, et n'utilise \"N\" que si le journal montre clairement que le point est sans objet pour ce poste.\n\nGrille (id → point) :\n"+lignes.join("\n")
+      +"\n\nTa réponse doit commencer par { et finir par } : uniquement le JSON {\"items\":{\"id\":{\"n\":\"A\",\"c\":\"…\"}}}, aucun texte avant ou après, pas de bloc de code.";
     const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
       headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:4000,messages:[{role:"user",content:prompt}]})});
+      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:8000,messages:[{role:"user",content:prompt},{role:"assistant",content:"{\"items\":{"}]})});
     const d=await r.json();
     if(d.error)throw new Error(d.error.message||d.error.type);
-    const txt=(d.content||[]).map(c=>c.text||"").join("");
-    const m0=txt.indexOf("{"),m1=txt.lastIndexOf("}");
-    if(m0<0||m1<=m0)throw new Error("réponse inattendue de l'IA");
-    const res=JSON.parse(txt.slice(m0,m1+1));
-    if(!res.items||typeof res.items!=="object")throw new Error("format inattendu — rien n'a été modifié");
+    let txt="{\"items\":{"+(d.content||[]).map(c=>c.text||"").join("");
+    const res=jsonSouple(txt);
+    if(!res||!res.items||typeof res.items!=="object")throw new Error("format inattendu — rien n'a été modifié. Début de la réponse : "+txt.slice(0,160));
     const OK=new Set();GRILLE.forEach(d=>d.items.forEach((_,i)=>OK.add(d.id+"_"+i)));
     let n=0;
     Object.entries(res.items).forEach(([iid,v])=>{
