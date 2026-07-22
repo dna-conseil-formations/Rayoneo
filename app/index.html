@@ -541,7 +541,9 @@ function render(){
   const m=$("main");
   ({infos:renderInfos,taches:renderTaches,journal:renderJournal,exig:renderExig,grille:renderGrille,precos:renderPrecos,match:renderMatch,plan:renderPlan,rapport:renderRapportMenu}[curSection]||renderInfos)(m);
   fb.classList.remove("hidden");
-  fb.innerHTML=`<button class="btn sec" onclick="navStep(-1)">◀ Précédent</button><button class="btn" onclick="navStep(1)">Suivant ▶</button>`;
+  const first=curSection===ORDER[0],last=curSection===ORDER[ORDER.length-1];
+  fb.innerHTML=(first?"":`<button class="btn sec" onclick="navStep(-1)">◀ Précédent</button>`)
+    +(last?`<button class="btn sec" onclick="goHome()">🏠 Retour à mes analyses</button>`:`<button class="btn" onclick="navStep(1)">Suivant ▶</button>`);
 }
 function navStep(d){const i=ORDER.indexOf(curSection)+d;if(i>=0&&i<ORDER.length)setSection(ORDER[i])}
 function renderNav(){
@@ -553,7 +555,7 @@ function renderNav(){
 function hideNav(){const n=document.querySelector("nav.sections");if(n)n.classList.add("hidden")}
 
 /* ---------- ACCUEIL ---------- */
-const APPV="v22";
+const APPV="v23";
 function renderHome(){
   hideNav();
   const m=$("main");
