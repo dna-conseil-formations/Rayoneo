@@ -571,7 +571,7 @@ function renderNav(){
 function hideNav(){const n=document.querySelector("nav.sections");if(n)n.classList.add("hidden")}
 
 /* ---------- ACCUEIL ---------- */
-const APPV="v25";
+const APPV="v26";
 function renderHome(){
   hideNav();
   const m=$("main");
@@ -1313,6 +1313,11 @@ function renderRapportMenu(m){
     <button class="btn" onclick="voirRapport(true)">🖨️ Imprimer / Enregistrer en PDF</button>
     <p class="hint">Sur Android : « Imprimer » puis « Enregistrer au format PDF ».</p>
   </div>
+  <div class="card"><h2>🕊️ Version diffusable (présentation)</h2>
+    <p style="font-size:14px">Une version du rapport pensée pour être partagée à l'extérieur (candidats, partenaires emploi) : elle présente l'activité, les exigences réelles et les difficultés du poste sans rien camoufler, mais <b>sans dévoiler les procédés, recettes, paramètres ou données commerciales</b> de l'entreprise. Le journal détaillé et la grille point par point sont remplacés par des synthèses.</p>
+    <p class="hint">Avec la clé API, Claude neutralise automatiquement les informations sensibles dans les textes du poste (les données enregistrées ne sont pas modifiées). Relis toujours avant diffusion.</p>
+    <button class="btn teal" onclick="voirRapportLight(this)">🕊️ Générer la version diffusable</button>
+  </div>
   <div class="card"><h2>💾 Exports</h2>
     <button class="btn sec" onclick="exportMatching()">Données de matching (JSON base Rayoneo)</button>
     <button class="btn sec" onclick="exportAuditSeul()">Audit complet (JSON de sauvegarde)</button>
@@ -1330,8 +1335,36 @@ function voirRapport(print){
   window.scrollTo(0,0);
   if(print)setTimeout(()=>window.print(),300);
 }
-function buildRapport(){
+/* Version diffusable : neutralise les procédés / recettes / paramètres via l'IA (si clé), garde les contraintes du poste */
+async function voirRapportLight(btn){
+  let T={description:cur.taches.description||"",principales:cur.taches.principales||"",exigences:cur.taches.exigences||"",synthese:cur.synthese||""};
+  if(iaKey()&&(T.description||T.principales||T.exigences||T.synthese)){
+    let old="";if(btn){btn.disabled=true;old=btn.textContent;btn.textContent="⏳ Neutralisation des informations sensibles…"}
+    try{
+      const prompt="Tu prépares la VERSION DIFFUSABLE d'un rapport d'analyse de poste (destinée à des tiers : candidats, partenaires emploi). Voici les textes internes :\n\n[description]\n"+T.description+"\n\n[principales]\n"+T.principales+"\n\n[exigences]\n"+T.exigences+(T.synthese?"\n\n[synthese]\n"+T.synthese:"")
+        +"\n\nRéécris ces textes pour une diffusion externe en respectant STRICTEMENT ces deux règles :\n1. SUPPRIME ou GÉNÉRALISE tout ce qui relève du savoir-faire propre de l'entreprise : recettes, procédés de fabrication, paramètres techniques (températures, durées, dosages, quantités), noms de produits en développement, fournisseurs, clients, prix, données commerciales. Exemple : « cuisson à 92 °C pendant 40 minutes » devient « étape de cuisson contrôlée ».\n2. CONSERVE fidèlement la réalité du poste : les contraintes physiques et organisationnelles, les difficultés, les risques et les exigences restent visibles et honnêtes. Ne rien enjoliver, ne rien camoufler.\nMême structure (les listes restent des listes avec « - »), texte brut sans Markdown.\n\nTa réponse doit commencer par { et finir par } : uniquement le JSON {\"description\":\"…\",\"principales\":\"…\",\"exigences\":\"…\",\"synthese\":\"…\"} (retours à la ligne encodés \\n), aucun texte avant ou après.";
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+        headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:4000,messages:[{role:"user",content:prompt}]})});
+      const d=await r.json();
+      if(!d.error){
+        const res=jsonSouple((d.content||[]).map(c=>c.text||"").join(""));
+        if(res)["description","principales","exigences","synthese"].forEach(k=>{if(typeof res[k]==="string")T[k]=nettoyerMd(res[k])});
+      }
+    }catch(_){/* repli : textes d'origine */}
+    if(btn){btn.disabled=false;btn.textContent=old}
+  }else if(!iaKey()){
+    if(!confirm("Sans clé API, les textes du poste seront repris tels quels (pas de neutralisation automatique des procédés).\nRelis-les avant diffusion. Continuer ?"))return;
+  }
+  buildRapport("light",T);
+  $("app").classList.add("hidden");hideNav();$("fbar").classList.add("hidden");
+  $("rapport").classList.remove("hidden");
+  window.scrollTo(0,0);
+}
+function buildRapport(mode,TXT){
+  const light=mode==="light";
   const a=cur,c=statCounts();
+  const T=TXT||{description:a.taches.description,principales:a.taches.principales,exigences:a.taches.exigences,synthese:a.synthese};
   const sect={prive:"Secteur privé",public:"Fonction publique",asso:"Association"}[a.infos.secteur];
   const finUsed={};cur.precos.forEach(p=>p.fins.forEach(f=>finUsed[f]=true));
   const dimsRows=DIMS.map(([id,lb])=>{
@@ -1352,15 +1385,16 @@ function buildRapport(){
     ${a.infos.entreprise?`<p class="c2">${esc(a.infos.entreprise)}</p>`:""}
     <p class="c3">${a.infos.dateAudit?fmtD(a.infos.dateAudit):""}${a.infos.auditeur?(a.infos.dateAudit?" · ":"")+esc(a.infos.auditeur):""}</p>
     <p class="c4">Rayoneo — faire rayonner les talents</p>
+    ${light?`<p class="c3" style="margin-top:16px">Version de présentation — diffusion externe</p>`:""}
   </div>
   <div class="cartouche">
-    <h1>Rapport d'analyse de poste</h1>
+    <h1>${light?"Présentation du poste":"Rapport d'analyse de poste"}</h1>
     <p style="color:var(--teal);font-weight:700">Rayoneo — faire rayonner les talents</p>
     <table><tr><th>Structure</th><td>${esc(a.infos.entreprise)||"—"} (${sect}, ${esc(a.infos.effectif)||"?"} salariés)</td></tr>
     ${a.infos.siren?`<tr><th>SIREN / NAF</th><td>${esc(a.infos.siren)}${a.infos.naf?" · NAF "+esc(a.infos.naf):""} <span style="color:var(--gris);font-size:11px">(source : annuaire officiel INSEE/RNE)</span></td></tr>`:""}
     <tr><th>Poste analysé</th><td>${esc(a.infos.poste)||"—"} — ${esc(a.infos.service)||""} (${esc(a.infos.contrat)})</td></tr>
     <tr><th>Date de l'audit</th><td>${fmtD(a.infos.dateAudit)}</td></tr>
-    ${(a.temps||[]).length?`<tr><th>Temps d'analyse</th><td><b>${fmtMin(tempsTotalMin(a))}</b> (${a.temps.length} session${a.temps.length>1?"s":""} horodatée${a.temps.length>1?"s":""}) : ${[...new Set(a.temps.map(t=>t.d.slice(0,10)))].sort().map(j=>fmtD(j)+" — "+fmtMin(a.temps.filter(t=>t.d.slice(0,10)===j).reduce((s,t)=>s+(new Date(t.f)-new Date(t.d))/60000,0))).join(" · ")}</td></tr>`:""}
+    ${(!light&&(a.temps||[]).length)?`<tr><th>Temps d'analyse</th><td><b>${fmtMin(tempsTotalMin(a))}</b> (${a.temps.length} session${a.temps.length>1?"s":""} horodatée${a.temps.length>1?"s":""}) : ${[...new Set(a.temps.map(t=>t.d.slice(0,10)))].sort().map(j=>fmtD(j)+" — "+fmtMin(a.temps.filter(t=>t.d.slice(0,10)===j).reduce((s,t)=>s+(new Date(t.f)-new Date(t.d))/60000,0))).join(" · ")}</td></tr>`:""}
     <tr><th>Embauche cible</th><td>${fmtD(a.infos.dateEmbauche)}</td></tr>
     <tr><th>Auditeur</th><td>${esc(a.infos.auditeur)||"—"}</td></tr>
     <tr><th>Contact</th><td>${esc(a.infos.contact)||"—"} ${a.infos.refHandicap?"· Référent handicap : "+esc(a.infos.refHandicap):""}</td></tr></table>
@@ -1370,18 +1404,20 @@ function buildRapport(){
   <table><tr><th>Conformes</th><th>À adapter</th><th>Bloquants</th><th>Non concernés</th></tr>
   <tr><td>${c.C}</td><td>${c.A}</td><td><b>${c.B}</b></td><td>${c.N}</td></tr></table>
   ${c.B>0?`<p><b style="color:var(--rouge)">⚠️ ${c.B} point(s) bloquant(s)</b> identifié(s) : leur traitement conditionne l'accueil d'un candidat.</p>`:`<p>Aucun point bloquant identifié.</p>`}
-  ${a.synthese?`<h3>Synthèse de l'auditeur</h3><p>${esc(a.synthese).replace(/\n/g,"<br>")}</p>`:""}
+  ${T.synthese?`<h3>Synthèse de l'auditeur</h3><p>${esc(T.synthese).replace(/\n/g,"<br>")}</p>`:""}
   <p style="font-size:12px">Ce rapport caractérise le poste <b>avant identification du candidat</b>. Les données d'exigences sont transmises à la base Rayoneo pour matcher les profils compatibles ; les aménagements individuels seront affinés avec le candidat retenu.</p>
 
   <h2>2. Structure : éligibilité et obligations</h2>
   ${eligibilite().map(e=>`<div class="eli ${e.cls}" style="margin-bottom:6px"><b>${esc(e.t)}</b>${esc(e.d)}</div>`).join("")}
 
   <h2>3. Le poste et ses tâches</h2>
-  ${a.taches.description?`<h3>Mission</h3><p>${esc(a.taches.description).replace(/\n/g,"<br>")}</p>`:""}
-  ${a.taches.principales?`<h3>Tâches principales</h3><p>${esc(a.taches.principales).replace(/\n/g,"<br>")}</p>`:""}
-  ${a.taches.exigences?`<h3>Contraintes particulières</h3><p>${esc(a.taches.exigences).replace(/\n/g,"<br>")}</p>`:""}
+  ${T.description?`<h3>Mission</h3><p>${esc(T.description).replace(/\n/g,"<br>")}</p>`:""}
+  ${T.principales?`<h3>Tâches principales</h3><p>${esc(T.principales).replace(/\n/g,"<br>")}</p>`:""}
+  ${T.exigences?`<h3>Contraintes particulières</h3><p>${esc(T.exigences).replace(/\n/g,"<br>")}</p>`:""}
 
-  ${cur.journal.length?`<h2>${++S}. Journal d'observation terrain</h2>
+  ${(light&&cur.journal.length)?`<h2>${++S}. Observation terrain</h2>
+  <p>L'analyse s'appuie sur <b>${cur.journal.length} observation${cur.journal.length>1?"s":""}</b> réalisée${cur.journal.length>1?"s":""} en situation réelle de travail, sur ${[...new Set(cur.journal.map(o=>o.date))].length} journée${[...new Set(cur.journal.map(o=>o.date))].length>1?"s":""} (${[...new Set(cur.journal.map(o=>o.date))].sort().map(fmtD).join(", ")}). Le détail des observations, propre à l'activité de l'entreprise, figure dans le rapport complet réservé aux parties prenantes.</p>`:""}
+  ${(!light&&cur.journal.length)?`<h2>${++S}. Journal d'observation terrain</h2>
   ${[...new Set(cur.journal.map(o=>o.date))].sort().map(d=>`<h3>📅 ${fmtD(d)}</h3>
   <table><tr><th style="width:60px">Heure</th><th style="width:26%">Étape / poste</th><th>Observations</th></tr>
   ${cur.journal.filter(o=>o.date===d).sort((x,y)=>(x.heure||"")<(y.heure||"")?-1:1).map(o=>`<tr><td>${esc(o.heure)||"—"}</td><td>${esc(o.etape)||"—"}</td><td>${esc(o.notes).replace(/\n/g,"<br>")}${(o.p||[]).map(p=>`<br><img class="rphoto" src="${p.src||p}">${p.cap?`<br><em style="font-size:10.5px;color:#555">📷 ${esc(p.cap)}</em>`:""}`).join("")}</td></tr>`).join("")}</table>`).join("")}`:""}
@@ -1397,12 +1433,20 @@ function buildRapport(){
   </table>
   <p style="font-size:11.5px;color:var(--gris)">Compatibilités indicatives calculées sur le profil d'exigences du poste. La décision se fait toujours au regard du profil individuel du candidat (matching Rayoneo), jamais de la seule famille de handicap.</p>
 
-  <h2>${++S}. Grille d'audit détaillée</h2>
+  ${light?`<h2>${++S}. Accessibilité et environnement de travail — synthèse</h2>
+  <table><tr><th>Domaine audité</th><th>Conformes</th><th>À adapter</th><th>Bloquants</th></tr>
+  ${GRILLE.map(d=>{
+    const cd={C:0,A:0,B:0};let ev=0;
+    d.items.forEach((_,i)=>{const g=a.grille[d.id+"_"+i];if(g&&g.n&&g.n!=="N"){ev++;cd[g.n]=(cd[g.n]||0)+1}});
+    return ev?`<tr><td>${d.ic} ${d.t}</td><td>${cd.C||0}</td><td>${cd.A||0}</td><td>${cd.B?`<b style="color:var(--rouge)">${cd.B}</b>`:"0"}</td></tr>`:"";
+  }).join("")}</table>
+  <p style="font-size:11.5px;color:var(--gris)">Synthèse par domaine de la grille d'audit (62 points de contrôle). Le détail point par point figure dans le rapport complet.</p>`
+  :`<h2>${++S}. Grille d'audit détaillée</h2>
   ${GRILLE.map(d=>{
     const rows=d.items.map((it,i)=>{const g=a.grille[d.id+"_"+i]||{};if(!g.n)return"";
       return `<tr><td>${esc(it)}</td><td style="white-space:nowrap"><span class="pill ${g.n}">${NOTES[g.n]}</span></td><td>${esc(g.c||"")}${(g.p||[]).map(p=>`<br><img class="rphoto" src="${p}">`).join("")}</td></tr>`}).join("");
     return rows?`<h3>${d.ic} ${d.t}</h3><table><tr><th style="width:42%">Point de contrôle</th><th>Évaluation</th><th>Observations</th></tr>${rows}</table>`:"";
-  }).join("")}
+  }).join("")}`}
 
   <h2>${++S}. Préconisations & adaptations du poste</h2>
   ${cur.precos.length?cur.precos.map((p,i)=>`
@@ -1432,8 +1476,10 @@ function buildRapport(){
    ${cur.plan.map(t=>`<tr><td>${fmtD(t.date)}</td><td>${esc(t.titre)}</td><td>${esc(t.resp)}</td><td style="text-align:center">${t.fait?"✅":"◻︎"}</td></tr>`).join("")}</table>`
    :"<p>Générer l'agenda depuis l'étape 7 (nécessite la date d'embauche cible)."}
 
-  <div class="sign"><div>Pour l'employeur — nom, date, signature</div><div>Pour Rayoneo — nom, date, signature</div></div>
-  <p style="font-size:11px;color:var(--gris);margin-top:14px">Rapport généré le ${new Date().toLocaleDateString("fr-FR")} avec l'application Rayoneo Analyse de poste. Document confidentiel — diffusion restreinte aux parties prenantes du projet de recrutement.</p>
+  ${light?"":`<div class="sign"><div>Pour l'employeur — nom, date, signature</div><div>Pour Rayoneo — nom, date, signature</div></div>`}
+  <p style="font-size:11px;color:var(--gris);margin-top:14px">${light
+    ?`Version de présentation générée le ${new Date().toLocaleDateString("fr-FR")} avec l'application Rayoneo Analyse de poste. Ce document décrit le poste et ses conditions réelles de travail ; les éléments relevant du savoir-faire de l'entreprise (procédés, paramètres, données commerciales) n'y figurent pas. Le rapport complet reste réservé aux parties prenantes du projet de recrutement.`
+    :`Rapport généré le ${new Date().toLocaleDateString("fr-FR")} avec l'application Rayoneo Analyse de poste. Document confidentiel — diffusion restreinte aux parties prenantes du projet de recrutement.`}</p>
   <div class="gradband"></div>`;
 }
 
