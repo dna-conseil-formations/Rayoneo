@@ -684,16 +684,95 @@ function renderInfos(m){
     ${eliHTML()}
     <p class="hint">Calcul automatique selon l'effectif, le type d'employeur, le statut particulier et le contrat. Ce diagnostic est repris dans le rapport.</p>
   </div>
+  <div class="card"><h2>⏱ Temps d'analyse (horodatage)</h2>
+    <p class="hint">Sessions enregistrées par le chronomètre (bouton en haut à droite). Chaque session est modifiable : corrige le début ou la fin si tu as oublié de lancer ou d'arrêter le chrono, supprime une session erronée, ou ajoute une session à la main.</p>
+    ${(cur.temps||[]).length?cur.temps.map((t,ix)=>`
+      <div class="row2" style="align-items:center;margin-bottom:6px">
+        <span><label class="f">Début</label><input type="datetime-local" value="${isoLoc(t.d)}" onchange="tempsUpd(${ix},'d',this.value)"></span>
+        <span style="display:flex;gap:6px;align-items:flex-end"><span style="flex:1"><label class="f">Fin</label><input type="datetime-local" value="${isoLoc(t.f)}" onchange="tempsUpd(${ix},'f',this.value)"></span>
+        <button onclick="tempsDel(${ix})" style="border:none;background:none;color:var(--rouge);font-size:16px;padding:8px" title="Supprimer la session">✕</button></span>
+      </div>`).join("")+`<p class="hint" style="font-weight:600">Total : ${fmtMin(tempsTotalMin(cur))}</p>`:`<p class="hint">Aucune session pour l'instant.</p>`}
+    <button class="btn sec" onclick="tempsAdd()">➕ Ajouter une session manuelle</button>
+  </div>
   <div class="card"><button class="btn danger" onclick="delAudit(cur.id)">🗑️ Supprimer cet audit</button></div>`;
+}
+/* édition manuelle de l'horodatage */
+function isoLoc(iso){const d=new Date(iso);if(isNaN(d))return"";d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
+function tempsUpd(ix,k,v){
+  const t=(cur.temps||[])[ix];if(!t||!v)return;
+  const nd=new Date(v);if(isNaN(nd))return;
+  t[k]=nd.toISOString();
+  if(new Date(t.f)<new Date(t.d)){alert("⚠️ La fin est avant le début : corrige l'une des deux valeurs.");}
+  persist();chronoRefresh();render();
+}
+function tempsDel(ix){if(!confirm("Supprimer cette session de temps ?"))return;cur.temps.splice(ix,1);persist();chronoRefresh();render()}
+function tempsAdd(){
+  cur.temps=cur.temps||[];
+  const f=new Date(),d=new Date(f.getTime()-3600000);
+  cur.temps.push({d:d.toISOString(),f:f.toISOString()});
+  persist();chronoRefresh();render();
+  toast("⏱ Session d'1 h ajoutée — ajuste le début et la fin",true);
 }
 
 /* ---------- 2. POSTE & TÂCHES ---------- */
+async function posteIA(btn){
+  if(!iaKey()){alert("Le pré-remplissage utilise l'IA : renseigne d'abord ta clé API (🔑 sur l'accueil).");iaOpenSettings();return}
+  const aJournal=cur.journal.length>0;
+  const aExig=Object.values(cur.exig.dims||{}).some(d=>d&&d.niv>0);
+  const aGrille=Object.values(cur.grille||{}).some(g=>g&&g.n);
+  if(!aJournal&&!aExig&&!aGrille){alert("Rien à analyser pour l'instant : remplis d'abord le journal (étape 3), les exigences ou l'audit.");return}
+  const deja=(cur.taches.description||"").trim()||(cur.taches.principales||"").trim()||(cur.taches.exigences||"").trim();
+  let remplacer=true;
+  if(deja)remplacer=confirm("La description du poste est déjà partiellement remplie.\n\nOK = tout réécrire depuis les données du dossier\nAnnuler = compléter uniquement les champs vides");
+  btn.disabled=true;const old=btn.textContent;btn.textContent="⏳ Analyse du dossier…";
+  try{
+    let ctx="";
+    if(cur.infos.poste)ctx+="Intitulé du poste : "+cur.infos.poste+"\n";
+    if(cur.infos.service)ctx+="Service : "+cur.infos.service+"\n";
+    if(cur.infos.contrat)ctx+="Contrat : "+cur.infos.contrat+"\n";
+    if(aJournal)ctx+="\n== JOURNAL D'OBSERVATION ==\n"+cur.journal.map(o=>"["+(o.date||"")+" "+(o.heure||"")+"] "+(o.etape||"Observation")+"\n"+(o.notes||"")
+      +((o.p||[]).filter(p=>p.cap).map(p=>"\nPhoto : "+p.cap).join(""))).join("\n\n");
+    if(aExig)ctx+="\n\n== PROFIL D'EXIGENCES ==\n"+DIMS.filter(([id])=>cur.exig.dims[id]&&cur.exig.dims[id].niv>0)
+      .map(([id,lb])=>{const d=cur.exig.dims[id];return lb+" : "+NIVX[d.niv]+(d.com?" — "+d.com:"")}).join("\n");
+    if(aGrille){const gl=[];GRILLE.forEach(dm=>dm.items.forEach((it,i)=>{const g=cur.grille[dm.id+"_"+i];if(g&&g.n&&g.n!=="N")gl.push(it+" : "+NOTES[g.n]+(g.c?" — "+g.c:""))}));
+      if(gl.length)ctx+="\n\n== AUDIT ==\n"+gl.join("\n");}
+    ctx=ctx.slice(0,15000);
+    const prompt="Tu es ergonome, spécialiste de l'analyse de poste pour l'inclusion des personnes en situation de handicap. Voici les données déjà recueillies dans un dossier d'analyse de poste :\n\n"+ctx
+      +"\n\nÀ partir de ces données UNIQUEMENT, rédige la description du poste en 3 champs, en texte brut sans Markdown :\n"
+      +"- description : mission générale du poste et sa place dans l'organisation, 2 à 4 phrases factuelles.\n"
+      +"- principales : les tâches principales observées, une par ligne, chaque ligne commençant par \"- \", dans l'ordre du processus si identifiable.\n"
+      +"- exigences : les contraintes particulières du poste (cadences, port de charges, coactivité, environnement thermique, machines, hygiène…), une par ligne commençant par \"- \".\n"
+      +"N'invente rien qui ne découle pas des données.\n\nTa réponse doit commencer par { et finir par } : uniquement le JSON {\"description\":\"…\",\"principales\":\"…\",\"exigences\":\"…\"} (retours à la ligne encodés \\n), aucun texte avant ou après, pas de bloc de code.";
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:4000,messages:[{role:"user",content:prompt},{role:"assistant",content:"{\"description\":\""}]})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||d.error.type);
+    const txt="{\"description\":\""+(d.content||[]).map(c=>c.text||"").join("");
+    const res=jsonSouple(txt);
+    if(!res||typeof res.description!=="string")throw new Error("format inattendu — rien n'a été modifié. Début de la réponse : "+txt.slice(0,160));
+    let n=0;
+    [["description",res.description],["principales",res.principales],["exigences",res.exigences]].forEach(([k,v])=>{
+      if(typeof v!=="string"||!v.trim())return;
+      if(!remplacer&&(cur.taches[k]||"").trim())return;
+      cur.taches[k]=nettoyerMd(v);n++;
+    });
+    persist();render();
+    toast("✨ "+n+" champ"+(n>1?"s":"")+" du poste rédigé"+(n>1?"s":"")+" depuis le dossier — relis et ajuste",true);
+    return;
+  }catch(e){alert("⚠️ Pré-remplissage impossible : "+(e.message||e))}
+  btn.disabled=false;btn.textContent=old;
+}
 function renderTaches(m){
   m.innerHTML=`
   <div class="card"><h2>🛠️ Description du poste</h2>
     ${TA("taches.description","Mission générale du poste","Finalité du poste, place dans l'organisation…")}
     ${TA("taches.principales","Tâches principales (une par ligne)","Ex :\n- Accueil téléphonique\n- Saisie de commandes\n- Préparation des expéditions")}
     ${TA("taches.exigences","Contraintes particulières observées","Cadences, horaires atypiques, polyvalence, coactivité, machines…")}
+  </div>
+  <div class="card"><h2>✨ Pré-remplissage par Claude</h2>
+    <p class="hint">Claude rédige les trois champs ci-dessus à partir de tout ce qui est déjà rempli dans le dossier : journal d'observation (notes et légendes photos), profil d'exigences et grille d'audit. Pratique en fin d'audit, quand le terrain est documenté. Tout reste modifiable.</p>
+    <button class="btn orange" onclick="posteIA(this)">✨ Rédiger le poste depuis le dossier</button>
   </div>
   <div class="card">
     <h2>📌 Rappel méthode</h2>
