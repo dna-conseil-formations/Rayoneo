@@ -826,9 +826,54 @@ function setDim(id,k,v){
   const d=cur.exig.dims[id]=cur.exig.dims[id]||{niv:0,adapt:"oui",com:""};
   d[k]=v;persist();if(k!=="com")render();
 }
+async function exigIA(btn){
+  if(!iaKey()){alert("Le pré-remplissage utilise l'IA : renseigne d'abord ta clé API (🔑 sur l'accueil).");iaOpenSettings();return}
+  if(!cur.journal.length){alert("Le journal d'observation est vide : remplis-le d'abord (étape 3), c'est lui que Claude analyse.");return}
+  const deja=Object.values(cur.exig.dims||{}).some(d=>d&&(d.niv>0||(d.com||"").trim()));
+  let remplacer=true;
+  if(deja)remplacer=confirm("Des exigences sont déjà renseignées.\n\nOK = tout ré-évaluer depuis le journal (remplace l'existant)\nAnnuler = compléter uniquement les capacités encore vides");
+  btn.disabled=true;const old=btn.textContent;btn.textContent="⏳ Analyse du journal…";
+  try{
+    const jr=cur.journal.map(o=>"["+(o.date||"")+" "+(o.heure||"")+"] "+(o.etape||"Observation")+"\n"+(o.notes||"")
+      +((o.p||[]).filter(p=>p.cap).map(p=>"\nPhoto : "+p.cap).join(""))).join("\n\n").slice(0,14000);
+    const prompt="Tu es ergonome, spécialiste de l'analyse de poste pour l'inclusion des personnes en situation de handicap. Voici le journal d'observation terrain d'un poste"
+      +(cur.infos.poste?" (intitulé : "+cur.infos.poste+")":"")+(cur.infos.service?", service : "+cur.infos.service:"")+" :\n\n"+jr
+      +"\n\nÀ partir de ces observations UNIQUEMENT, évalue le niveau requis par le POSTE (pas par une personne) pour chaque capacité de la liste. Barème niv : 0=non requis, 1=faible, 2=moyen, 3=élevé. Champ adapt (uniquement si niv>0) : \"oui\" si l'exigence est aménageable (aide technique, réorganisation, réattribution de tâche), \"partiel\", ou \"non\" si incontournable. Champ com : 1 phrase factuelle justifiant le niveau à partir du journal, texte brut sans Markdown ; si niv=0, com vide. N'invente rien : si le journal ne permet pas d'évaluer une capacité, omets-la.\n\nCapacités (id → libellé) :\n"
+      +DIMS.map(([id,lb])=>id+" → "+lb).join("\n")
+      +"\n\nRéponds UNIQUEMENT par un JSON de la forme {\"dims\":{\"id\":{\"niv\":2,\"adapt\":\"oui\",\"com\":\"…\"}},\"note\":\"2 phrases max sur les marges de manœuvre du poste\"} sans autre texte.";
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:2500,messages:[{role:"user",content:prompt}]})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||d.error.type);
+    const txt=(d.content||[]).map(c=>c.text||"").join("");
+    const m0=txt.indexOf("{"),m1=txt.lastIndexOf("}");
+    if(m0<0||m1<=m0)throw new Error("réponse inattendue de l'IA");
+    const res=JSON.parse(txt.slice(m0,m1+1));
+    if(!res.dims||typeof res.dims!=="object")throw new Error("format inattendu — rien n'a été modifié");
+    const OK=new Set(DIMS.map(([id])=>id));let n=0;
+    Object.entries(res.dims).forEach(([id,v])=>{
+      if(!OK.has(id)||!v)return;
+      const ex=cur.exig.dims[id];
+      if(!remplacer&&ex&&(ex.niv>0||(ex.com||"").trim()))return;
+      const niv=Math.max(0,Math.min(3,parseInt(v.niv)||0));
+      const adapt=["oui","partiel","non"].includes(v.adapt)?v.adapt:"oui";
+      cur.exig.dims[id]={niv:niv,adapt:adapt,com:niv>0?nettoyerMd(String(v.com||"")):""};n++;
+    });
+    if(res.note&&(remplacer||!(cur.exig.note||"").trim()))cur.exig.note=nettoyerMd(String(res.note));
+    persist();render();
+    toast("✨ "+n+" capacités évaluées depuis le journal — relis et ajuste si besoin",true);
+    return;
+  }catch(e){alert("⚠️ Pré-remplissage impossible : "+(e.message||e))}
+  btn.disabled=false;btn.textContent=old;
+}
 function renderExig(m){
   m.innerHTML=`
   <div class="avert">🎯 Cœur du matching Rayoneo : pour chaque capacité, indiquez le <b>niveau requis</b> par le poste et si cette exigence est <b>adaptable</b> (aménagement, réattribution de tâche, aide technique). Ces données seront croisées avec les profils candidats de la base.</div>
+  <div class="card"><h2>✨ Pré-remplissage par Claude</h2>
+    <p class="hint">Claude lit le journal d'observation (étapes, notes, légendes des photos), évalue le niveau requis pour chaque capacité, coche l'adaptabilité et rédige un commentaire justifié. Tu restes maître : tout est modifiable après coup.</p>
+    <button class="btn orange" onclick="exigIA(this)">✨ Analyser le journal et pré-remplir</button>
+  </div>
   <div class="card"><h2>⚖️ Profil d'exigences du poste</h2>
     ${DIMS.map(([id,lb])=>{
       const d=cur.exig.dims[id]||{niv:0,adapt:"oui",com:""};
