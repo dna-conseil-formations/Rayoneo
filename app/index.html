@@ -1152,22 +1152,40 @@ function renderMatch(m){
 }
 
 /* ---------- 7. PLAN D'ACTION ---------- */
+/* arithmétique de dates insensible au fuseau horaire (UTC) */
+function addJours(iso,n){const d=new Date(iso+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function ecartJours(a,b){return Math.round((Date.parse(b+"T12:00:00Z")-Date.parse(a+"T12:00:00Z"))/86400000)}
 function genererPlan(){
   if(!cur.infos.dateEmbauche){alert("Renseignez d'abord la date d'embauche cible (étape 1).");setSection("infos");return}
   const keep=cur.plan.filter(t=>t.manuel);
-  const base=new Date(cur.infos.dateEmbauche+"T00:00:00");
-  const out=JALONS.map((j,i)=>{
-    const d=new Date(base);d.setDate(d.getDate()+j[0]);
-    return {id:"j"+i,date:d.toISOString().slice(0,10),titre:j[1],resp:j[2],fait:false,manuel:false};
-  });
+  const base=cur.infos.dateEmbauche;
+  const out=JALONS.map((j,i)=>({id:"j"+i,date:addJours(base,j[0]),titre:j[1],resp:j[2],fait:false,manuel:false}));
   cur.precos.filter(p=>p.priorite==="haute").forEach((p,i)=>{
-    const d=new Date(base);d.setDate(d.getDate()-30);
-    out.push({id:"jp"+i,date:d.toISOString().slice(0,10),titre:"Traiter (bloquant) : "+p.titre.replace("⚠️ ",""),resp:"Employeur + Rayoneo",fait:false,manuel:false});
+    out.push({id:"jp"+i,date:addJours(base,-30),titre:"Traiter (bloquant) : "+p.titre.replace("⚠️ ",""),resp:"Employeur + Rayoneo",fait:false,manuel:false});
   });
   cur.plan=[...out,...keep].sort((a,b)=>a.date<b.date?-1:1);persist();render();
 }
 function addTache(){cur.plan.push({id:"t"+Date.now(),date:new Date().toISOString().slice(0,10),titre:"Nouvelle tâche",resp:"",fait:false,manuel:true});persist();render()}
-function updT(id,k,v){const t=cur.plan.find(x=>x.id===id);if(t){t[k]=k==="fait"?v.checked:v;persist();if(k==="fait")render()}}
+function updT(id,k,v){
+  const t=cur.plan.find(x=>x.id===id);if(!t)return;
+  if(k==="date"&&t.date&&v&&v!==t.date){
+    /* recalcul en cascade : les échéances à partir de l'ancienne date sont décalées du même écart ; rien avant */
+    const old=t.date;
+    const delta=ecartJours(old,v);
+    t.date=v;let n=0;
+    if(delta){
+      cur.plan.forEach(x=>{
+        if(x.id===id||x.fait||!x.date||x.date<old)return;
+        x.date=addJours(x.date,delta);n++;
+      });
+      cur.plan.sort((a,b)=>a.date<b.date?-1:1);
+    }
+    persist();render();
+    if(n)toast("📅 "+n+" échéance"+(n>1?"s":"")+" suivante"+(n>1?"s":"")+" décalée"+(n>1?"s":"")+" de "+(delta>0?"+":"")+delta+" jour"+(Math.abs(delta)>1?"s":"")+" — les étapes passées et déjà faites n'ont pas bougé",true);
+    return;
+  }
+  t[k]=k==="fait"?v.checked:v;persist();if(k==="fait")render();
+}
 function delT(id){cur.plan=cur.plan.filter(x=>x.id!==id);persist();render()}
 function renderPlan(m){
   m.innerHTML=`
