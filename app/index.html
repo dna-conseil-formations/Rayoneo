@@ -910,6 +910,48 @@ function statCounts(){
   const c={C:0,A:0,B:0,N:0};
   Object.values(cur.grille).forEach(g=>{if(g.n)c[g.n]++});return c;
 }
+async function auditIA(btn){
+  if(!iaKey()){alert("Le pré-remplissage utilise l'IA : renseigne d'abord ta clé API (🔑 sur l'accueil).");iaOpenSettings();return}
+  if(!cur.journal.length){alert("Le journal d'observation est vide : remplis-le d'abord (étape 3), c'est lui que Claude analyse.");return}
+  const deja=Object.values(cur.grille||{}).some(g=>g&&(g.n||(g.c||"").trim()));
+  let remplacer=true;
+  if(deja)remplacer=confirm("Des points de la grille sont déjà notés.\n\nOK = tout ré-évaluer depuis le journal (remplace notes et commentaires ; les photos sont conservées)\nAnnuler = compléter uniquement les points encore vides");
+  btn.disabled=true;const old=btn.textContent;btn.textContent="⏳ Analyse du journal…";
+  try{
+    const jr=cur.journal.map(o=>"["+(o.date||"")+" "+(o.heure||"")+"] "+(o.etape||"Observation")+"\n"+(o.notes||"")
+      +((o.p||[]).filter(p=>p.cap).map(p=>"\nPhoto : "+p.cap).join(""))).join("\n\n").slice(0,13000);
+    const lignes=[];GRILLE.forEach(d=>d.items.forEach((it,i)=>lignes.push(d.id+"_"+i+" → ["+d.t+"] "+it)));
+    const prompt="Tu es ergonome et auditeur accessibilité, spécialiste de l'analyse de poste pour l'inclusion des personnes en situation de handicap. Journal d'observation terrain d'un poste"
+      +(cur.infos.poste?" (intitulé : "+cur.infos.poste+")":"")+(cur.infos.service?", service : "+cur.infos.service:"")+" :\n\n"+jr
+      +"\n\nÀ partir de ces observations UNIQUEMENT, note les points de la grille d'audit ci-dessous. Notes possibles : \"C\" conforme, \"A\" à adapter (aménagement nécessaire), \"B\" bloquant (obstacle majeur), \"N\" non concerné par ce poste. Champ c : 1 phrase factuelle tirée du journal justifiant la note, texte brut sans Markdown. Règle stricte : n'évalue QUE les points pour lesquels le journal apporte un constat explicite ou une déduction solide (ex : sols carrelés glissants observés → point sols/glissance) ; omets tous les autres, n'invente rien, et n'utilise \"N\" que si le journal montre clairement que le point est sans objet pour ce poste.\n\nGrille (id → point) :\n"+lignes.join("\n")
+      +"\n\nRéponds UNIQUEMENT par un JSON de la forme {\"items\":{\"id\":{\"n\":\"A\",\"c\":\"…\"}}} sans autre texte.";
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":iaKey(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:MODELES.sonnet[0],max_tokens:4000,messages:[{role:"user",content:prompt}]})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||d.error.type);
+    const txt=(d.content||[]).map(c=>c.text||"").join("");
+    const m0=txt.indexOf("{"),m1=txt.lastIndexOf("}");
+    if(m0<0||m1<=m0)throw new Error("réponse inattendue de l'IA");
+    const res=JSON.parse(txt.slice(m0,m1+1));
+    if(!res.items||typeof res.items!=="object")throw new Error("format inattendu — rien n'a été modifié");
+    const OK=new Set();GRILLE.forEach(d=>d.items.forEach((_,i)=>OK.add(d.id+"_"+i)));
+    let n=0;
+    Object.entries(res.items).forEach(([iid,v])=>{
+      if(!OK.has(iid)||!v||!["C","A","B","N"].includes(v.n))return;
+      const ex=cur.grille[iid];
+      if(!remplacer&&ex&&(ex.n||(ex.c||"").trim()))return;
+      cur.grille[iid]=cur.grille[iid]||{};
+      cur.grille[iid].n=v.n;
+      cur.grille[iid].c=nettoyerMd(String(v.c||""));
+      n++;
+    });
+    persist();render();
+    toast("✨ "+n+" points de la grille évalués depuis le journal — relis et complète le reste sur le terrain",true);
+    return;
+  }catch(e){alert("⚠️ Pré-remplissage impossible : "+(e.message||e))}
+  btn.disabled=false;btn.textContent=old;
+}
 function renderGrille(m){
   const c=statCounts();
   m.innerHTML=`
@@ -919,6 +961,10 @@ function renderGrille(m){
       <div class="s-B"><b>${c.B}</b>Bloquant</div><div class="s-N"><b>${c.N}</b>Non conc.</div>
     </div>
     <p class="hint">Pour chaque point : <b>Conforme</b> · <b>À adapter</b> (aménagement nécessaire) · <b>Bloquant</b> (obstacle majeur) · <b>N/C</b>. Ajoutez commentaires et photos.</p>
+  </div>
+  <div class="card"><h2>✨ Pré-remplissage par Claude</h2>
+    <p class="hint">Claude lit le journal d'observation et note les points de la grille pour lesquels il a des constats (avec un commentaire justifié). Il ne note volontairement pas les points que le journal ne couvre pas : ceux-là restent à vérifier sur le terrain. Tout est modifiable.</p>
+    <button class="btn orange" onclick="auditIA(this)">✨ Analyser le journal et pré-remplir la grille</button>
   </div>
   ${GRILLE.map(d=>`
   <div class="card"><h2>${d.ic} ${d.t}</h2>
