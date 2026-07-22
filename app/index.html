@@ -149,12 +149,17 @@ pre.json{background:#0e2233;color:#cfe8ff;border-radius:10px;padding:12px;font-s
 #rapport .gradband{height:8px;background:var(--grad);border-radius:4px;margin-top:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #rapport .sign{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:24px}
 #rapport .sign>div{border:1px solid #c9d2da;border-radius:8px;height:110px;padding:8px;font-size:12px;color:var(--gris)}
+@page{size:A4;margin:14mm}
 @media print{
   body{background:#fff;padding:0}
   header.app,nav.sections,.footer-bar,.no-print,#iabtn,#iapanel{display:none!important}
   #app{display:none!important}
-  #rapport{display:block!important;padding:0}
-  .preco,.fam,#rapport table,#rapport .cartouche{page-break-inside:avoid}
+  #rapport{display:block!important;padding:0;max-width:none}
+  /* A4 : les longues tables peuvent se couper entre les pages, jamais au milieu d'une ligne */
+  .preco,.fam,#rapport .cartouche,#rapport tr,#rapport .sign,#rapport .rphoto{page-break-inside:avoid}
+  #rapport thead{display:table-header-group}
+  #rapport h2{page-break-after:avoid}
+  .couv{min-height:calc(100vh - 10mm)}
 }
 
 /* page de garde du rapport */
@@ -566,7 +571,7 @@ function renderNav(){
 function hideNav(){const n=document.querySelector("nav.sections");if(n)n.classList.add("hidden")}
 
 /* ---------- ACCUEIL ---------- */
-const APPV="v24";
+const APPV="v25";
 function renderHome(){
   hideNav();
   const m=$("main");
@@ -1346,11 +1351,11 @@ function buildRapport(){
     ${a.infos.poste?`<p class="c1">${esc(a.infos.poste)}</p>`:""}
     ${a.infos.entreprise?`<p class="c2">${esc(a.infos.entreprise)}</p>`:""}
     <p class="c3">${a.infos.dateAudit?fmtD(a.infos.dateAudit):""}${a.infos.auditeur?(a.infos.dateAudit?" · ":"")+esc(a.infos.auditeur):""}</p>
-    <p class="c4">Rayoneo · DNA Conseil et formations — démarche « zéro barrière »</p>
+    <p class="c4">Rayoneo — faire rayonner les talents</p>
   </div>
   <div class="cartouche">
     <h1>Rapport d'analyse de poste</h1>
-    <p style="color:var(--teal);font-weight:700">Rayoneo · DNA Conseil et formations — démarche « zéro barrière »</p>
+    <p style="color:var(--teal);font-weight:700">Rayoneo — faire rayonner les talents</p>
     <table><tr><th>Structure</th><td>${esc(a.infos.entreprise)||"—"} (${sect}, ${esc(a.infos.effectif)||"?"} salariés)</td></tr>
     ${a.infos.siren?`<tr><th>SIREN / NAF</th><td>${esc(a.infos.siren)}${a.infos.naf?" · NAF "+esc(a.infos.naf):""} <span style="color:var(--gris);font-size:11px">(source : annuaire officiel INSEE/RNE)</span></td></tr>`:""}
     <tr><th>Poste analysé</th><td>${esc(a.infos.poste)||"—"} — ${esc(a.infos.service)||""} (${esc(a.infos.contrat)})</td></tr>
@@ -1427,7 +1432,7 @@ function buildRapport(){
    ${cur.plan.map(t=>`<tr><td>${fmtD(t.date)}</td><td>${esc(t.titre)}</td><td>${esc(t.resp)}</td><td style="text-align:center">${t.fait?"✅":"◻︎"}</td></tr>`).join("")}</table>`
    :"<p>Générer l'agenda depuis l'étape 7 (nécessite la date d'embauche cible)."}
 
-  <div class="sign"><div>Pour l'employeur — nom, date, signature</div><div>Pour Rayoneo / DNA Conseil et formations — nom, date, signature</div></div>
+  <div class="sign"><div>Pour l'employeur — nom, date, signature</div><div>Pour Rayoneo — nom, date, signature</div></div>
   <p style="font-size:11px;color:var(--gris);margin-top:14px">Rapport généré le ${new Date().toLocaleDateString("fr-FR")} avec l'application Rayoneo Analyse de poste. Document confidentiel — diffusion restreinte aux parties prenantes du projet de recrutement.</p>
   <div class="gradband"></div>`;
 }
